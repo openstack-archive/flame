@@ -10,9 +10,9 @@ Available options can be displayed by using `flame.py -h`:
     usage: flame.py [-h] [--username USERNAME] [--password PASSWORD]
                     [--project PROJECT] [--auth_url AUTH_URL] [--insecure]
                     [--exclude_servers] [--exclude_volumes]
-    
+
     Generate Heat Template
-    
+
     optional arguments:
       -h, --help           show this help message and exit
       --username USERNAME  A user name with access to the project. Defaults to
@@ -30,8 +30,9 @@ Available options can be displayed by using `flame.py -h`:
 
 Example
 -------
+
     $ python flame.py --username arezmerita --password password \
---project project-arezmerita --auth_url https://identity0.cw-labs.net/v2.0/
+    --project project-arezmerita --auth_url https://identity0.cw-labs.net/v2.0/
 
 
 License / Copyright

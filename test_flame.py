@@ -544,10 +544,12 @@ class ServerTests(unittest.TestCase):
         self.cinder_manager.volumes = [FakeVolume(id=5678,
                                                   attachments=attachments,
                                                   bootable='true')]
-        server = FakeServer(id=777, image=None)
-        setattr(server,
-                'os-extended-volumes:volumes_attached',
-                [{'id': 5678}])
+        servers_args = {
+            "id": 777,
+            "image": None,
+            "os-extended-volumes:volumes_attached": [{'id': 5678}]
+        }
+        server = FakeServer(**servers_args)
         self.nova_manager.servers = [server]
         generator = flame.TemplateGenerator([], [])
         expected = {
@@ -585,10 +587,10 @@ class ServerTests(unittest.TestCase):
         self.cinder_manager.volumes = [FakeVolume(id=5678,
                                                   attachments=attachments,
                                                   bootable='false')]
-        server = FakeServer(id=777)
-        setattr(server,
-                'os-extended-volumes:volumes_attached',
-                [{'id': 5678}])
+        server_args = {
+            "id": 777,
+            "os-extended-volumes:volumes_attached": [{'id': 5678}]}
+        server = FakeServer(**server_args)
         self.nova_manager.servers = [server]
         generator = flame.TemplateGenerator([], [])
         expected = {
@@ -675,5 +677,133 @@ class ServerTests(unittest.TestCase):
             }
         }
         generator.extract_secgroups()
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_config_drive(self):
+        self.nova_manager.servers = [FakeServer(config_drive="True")]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'config_drive': 'True',
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                    }
+                }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_metadata(self):
+        self.nova_manager.servers = [FakeServer(metadata={"key": "value"})]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'metadata': {'key': 'value'},
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                    }
+                }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_networks(self):
+        subnet = {
+            "id": "4321",
+            "name": "private_subnet",
+            "network_id": "1234",
+            "allocation_pools": {"start": "10.0.0.2", "end": "10.0.0.254"},
+            "cidr": "10.0.0.0/24",
+            "dns_nameservers": [],
+            "enable_dhcp": True,
+            "host_routes": [],
+            "ip_version": 4}
+        self.neutron_manager.subnets = [subnet]
+        network = {
+            "id": "1234",
+            "name": "private"}
+        self.neutron_manager.networks = [network]
+        addresses = {"private": [{"addr": "10.0.0.2"}]}
+        self.nova_manager.servers = [FakeServer(addresses=addresses)]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'networks': [
+                            {'network': {'get_resource': 'private_0'}}],
+                        'image': {'get_param': 'server_0_image'},
+                    }
+                }
+            }
+        }
         generator.extract_servers()
         self.assertEqual(expected, generator.template)
