@@ -42,6 +42,9 @@ class FakeFlavor(FakeBase):
     name = 'm1.tiny'
     id = '1'
 
+class FakeKeypair(FakeBase):
+    name = 'key'
+    public_key = 'ssh-rsa AAAAB3NzaC'
 
 class FakeNeutronManager(object):
 
@@ -66,9 +69,10 @@ class FakeNovaManager(object):
     servers = []
     flavors = [FakeFlavor(id='2', name='m1.small')]
     groups = {}
+    keypairs = [FakeKeypair(name='testkey', public_key='ssh-rsa XXXX')]
 
     def keypair_list(self):
-        return []
+        return self.keypairs
 
     def flavor_list(self):
         return self.flavors
@@ -332,6 +336,135 @@ class ServerTests(unittest.TestCase):
                         'image': {'get_param': 'server_0_image'},
                     }
                 }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_server_keypair(self):
+        self.nova_manager.servers = [FakeServer(key_name='testkey')]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'key_name': {'get_resource': 'key_0'},
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                    }
+                }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_server_boot_from_volume(self):
+        attachments = [{'device': 'vda',
+                        'server_id': '777',
+                        'id': '5678',
+                        'host_name': None,
+                        'volume_id': '5678'}]
+        self.cinder_manager.volumes = [FakeVolume(id=5678,
+                                                  attachments=attachments,
+                                                  bootable='true')]
+        server = FakeServer(id=777, image=None)
+        setattr(server,
+                'os-extended-volumes:volumes_attached',
+                [{'id': 5678}])
+        self.nova_manager.servers = [server]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'block_device_mapping': [{'volume_id': {
+                            'get_resource': 'volume_0'}, 'device_name': 'vda'}]
+                    }
+                },
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_server_volume_attached(self):
+        attachments = [{'device': '/dev/vdb',
+                        'server_id': '777',
+                        'id': '5678',
+                        'host_name': None,
+                        'volume_id': '5678'}]
+        self.cinder_manager.volumes = [FakeVolume(id=5678,
+                                                  attachments=attachments,
+                                                  bootable='false')]
+        server = FakeServer(id=777)
+        setattr(server,
+                'os-extended-volumes:volumes_attached',
+                [{'id': 5678}])
+        self.nova_manager.servers = [server]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                        'block_device_mapping': [{'volume_id': {
+                            'get_resource': 'volume_0'}, 'device_name':
+                            '/dev/vdb'}]
+                    }
+                },
             }
         }
         generator.extract_servers()
