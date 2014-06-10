@@ -51,18 +51,24 @@ class FakeKeypair(FakeBase):
 class FakeSecurityGroup(FakeBase):
     id = '1'
 
-
 class FakeNeutronManager(object):
     groups = []
+    routers = []
+    ports = []
+    subnets = []
+    networks = []
 
     def subnet_list(self):
-        return []
+        return self.subnets
 
     def network_list(self):
-        return []
+        return self.networks
 
     def router_list(self):
-        return []
+        return self.routers
+
+    def router_interfaces_list(self, router):
+        return self.ports
 
     def secgroup_list(self):
         return self.groups
@@ -97,6 +103,150 @@ class FakeCinderManager(object):
 
     def volume_list(self):
         return self.volumes
+
+class NetworkTests(unittest.TestCase):
+
+    def setUp(self):
+        self.neutron_manager = FakeNeutronManager()
+        flame.TemplateGenerator.neutron_manager = (
+            lambda x: self.neutron_manager)
+        self.nova_manager = FakeNovaManager()
+        flame.TemplateGenerator.nova_manager = (
+            lambda x: self.nova_manager)
+        self.cinder_manager = FakeCinderManager()
+        flame.TemplateGenerator.cinder_manager = (
+            lambda x: self.cinder_manager)
+
+    def test_router(self):
+        router = {
+            'name': 'myrouter',
+            'id': '1234',
+            'admin_state_up': 'true',
+            'external_gateway_info': None
+        }
+        self.neutron_manager.routers = [router]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'router_0': {
+                    'type': 'OS::Neutron::Router',
+                    'properties': {
+                        'name': 'myrouter',
+                        'admin_state_up': 'true',
+                    }
+                }
+            }
+        }
+        generator.extract_routers()
+        self.assertEqual(expected, generator.template)
+
+    def test_router_with_external_gateway(self):
+        router = {
+            'name': 'myrouter',
+            'id': '1234',
+            'admin_state_up': 'true',
+            'external_gateway_info': {
+                'network_id': '8765',
+                'enable_snat': 'true'
+            }
+        }
+        self.neutron_manager.routers = [router]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'router_0_external_network': {
+                    'type': 'string',
+                    'description': 'Router external network',
+                    'constraints': [{'custom_constraint': 'neutron.network'}]}
+            },
+            'resources': {
+                'router_0_gateway': {
+                    'type': 'OS::Neutron::RouterGateway',
+                    'properties': {
+                        'router_id': {'get_resource': 'router_0'},
+                        'network_id': {'get_param': 'router_0_external_network'}
+                    }
+                },
+                'router_0': {
+                    'type': 'OS::Neutron::Router',
+                    'properties': {
+                        'name': 'myrouter',
+                        'admin_state_up': 'true',
+                    }
+                }
+            }
+        }
+        generator.extract_routers()
+        self.assertEqual(expected, generator.template)
+
+    def test_router_with_port(self):
+        router = {
+            'name': 'myrouter',
+            'id': '1234',
+            'admin_state_up': 'true',
+            'external_gateway_info': None
+        }
+        port = {
+            'status': 'ACTIVE',
+            'name': '',
+            'allowed_address_pairs': [],
+            'admin_state_up': True,
+            'network_id': '4444',
+            'extra_dhcp_opts': [],
+            'binding:vnic_type': 'normal',
+            'device_owner': 'network:router_interface',
+            'mac_address': 'fa:16:3e:4b:8c:98',
+            'fixed_ips': [{'subnet_id': '1111', 'ip_address': '10.123.2.3'}],
+            'id': '1234567',
+            'security_groups': [],
+            'device_id': '1234'
+        }
+        subnet = {
+            'name': 'subnet_1111',
+            'enable_dhcp': True,
+            'network_id': '1234',
+            'dns_nameservers': [],
+            'allocation_pools': [{'start': '10.123.2.2',
+                                  'end': '10.123.2.30'}],
+            'host_routes': [],
+            'ip_version': 4,
+            'gateway_ip': '10.123.2.1',
+            'cidr': '10.123.2.0/27',
+            'id': '1111'}
+
+        self.neutron_manager.ports = [port]
+        self.neutron_manager.subnets = [subnet]
+        self.neutron_manager.routers = [router]
+
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'router_0_interface_0': {
+                    'type': 'OS::Neutron::RouterInterface',
+                    'properties': {
+                        'subnet_id': {'get_resource': 'subnet_0'},
+                        'router_id': {'get_resource': 'router_0'}
+                    }
+                },
+                'router_0': {
+                    'type': 'OS::Neutron::Router',
+                    'properties': {
+                        'name': 'myrouter',
+                        'admin_state_up': 'true',
+                    }
+                }
+            }
+        }
+        generator.extract_routers()
+        self.assertEqual(expected, generator.template)
 
 
 class VolumeTests(unittest.TestCase):

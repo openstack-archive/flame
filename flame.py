@@ -118,8 +118,7 @@ class TemplateGenerator(object):
 
     def extract_routers(self):
         for n, router in enumerate(self.routers):
-            router_resource_name = "%s_%d" % \
-                                   (router['name'].replace(' ', '_'), n)
+            router_resource_name = "router_%d" % n
             resource = {
                 router_resource_name: {
                     'type': 'OS::Neutron::Router',
@@ -141,8 +140,7 @@ class TemplateGenerator(object):
             if network['router:external']:
                 self.external_networks.append(network['id'])
                 continue
-            network_resource_name = "%s_%d" % \
-                                    (network['name'].replace(' ', '_'), n)
+            network_resource_name = "network_%d" % n
             resource = {
                 network_resource_name: {
                     'type': 'OS::Neutron::Net',
@@ -156,19 +154,16 @@ class TemplateGenerator(object):
             self.template['resources'].update(resource)
 
     def get_network_resource_name(self, id):
-        return "%s_%d" % (self.networks[id][1]['name'].replace(' ', '_'),
-                          self.networks[id][0])
+        return "network_%d" % self.networks[id][0]
 
     def get_subnet_resource_name(self, id):
-        return "subnet_%s_%d" % (self.subnets[id][1]['name'].replace(' ', '_'),
-                                 self.subnets[id][0])
+        return "subnet_%d" % self.subnets[id][0]
 
     def extract_subnets(self):
         for n, subnet in self.subnets.itervalues():
             if subnet['network_id'] in self.external_networks:
                 continue
-            subnet_resource_name = "subnet_%s_%d" % \
-                                   (subnet['name'].replace(' ', '_'), n)
+            subnet_resource_name = "subnet_%d" % n
             net_name = self.get_network_resource_name(subnet['network_id'])
             resource = {
                 subnet_resource_name: {
