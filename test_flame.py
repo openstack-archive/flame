@@ -125,7 +125,7 @@ class NetworkTests(unittest.TestCase):
             'external_gateway_info': None
         }
         self.neutron_manager.routers = [router]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -154,7 +154,7 @@ class NetworkTests(unittest.TestCase):
             }
         }
         self.neutron_manager.routers = [router]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -223,7 +223,7 @@ class NetworkTests(unittest.TestCase):
         self.neutron_manager.subnets = [subnet]
         self.neutron_manager.routers = [router]
 
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -264,7 +264,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_basic(self):
         self.cinder_manager.volumes = [FakeVolume()]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -285,7 +285,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_source_volid_external(self):
         self.cinder_manager.volumes = [FakeVolume(source_volid=5678)]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -313,7 +313,7 @@ class VolumeTests(unittest.TestCase):
     def test_source_volid_included(self):
         self.cinder_manager.volumes = [
             FakeVolume(source_volid=5678), FakeVolume(id=5678)]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -343,7 +343,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_image(self):
         self.cinder_manager.volumes = [FakeVolume(bootable='true')]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -373,7 +373,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_snapshot_id(self):
         self.cinder_manager.volumes = [FakeVolume(snapshot_id=5678)]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -400,7 +400,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_volume_type(self):
         self.cinder_manager.volumes = [FakeVolume(volume_type='isci')]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -428,7 +428,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_metadata(self):
         self.cinder_manager.volumes = [FakeVolume(metadata={'key': 'value'})]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -464,7 +464,7 @@ class ServerTests(unittest.TestCase):
 
     def test_basic(self):
         self.nova_manager.servers = [FakeServer()]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -500,7 +500,7 @@ class ServerTests(unittest.TestCase):
 
     def test_keypair(self):
         self.nova_manager.servers = [FakeServer(key_name='testkey')]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -551,7 +551,7 @@ class ServerTests(unittest.TestCase):
         }
         server = FakeServer(**servers_args)
         self.nova_manager.servers = [server]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -592,7 +592,7 @@ class ServerTests(unittest.TestCase):
             "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         server = FakeServer(**server_args)
         self.nova_manager.servers = [server]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -636,7 +636,7 @@ class ServerTests(unittest.TestCase):
         ]
         self.nova_manager.groups = {'server1': [FakeSecurityGroup()]}
         self.nova_manager.servers = [FakeServer()]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -682,7 +682,7 @@ class ServerTests(unittest.TestCase):
 
     def test_config_drive(self):
         self.nova_manager.servers = [FakeServer(config_drive="True")]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -719,7 +719,7 @@ class ServerTests(unittest.TestCase):
 
     def test_metadata(self):
         self.nova_manager.servers = [FakeServer(metadata={"key": "value"})]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -772,7 +772,7 @@ class ServerTests(unittest.TestCase):
         self.neutron_manager.networks = [network]
         addresses = {"private": [{"addr": "10.0.0.2"}]}
         self.nova_manager.servers = [FakeServer(addresses=addresses)]
-        generator = flame.TemplateGenerator([], [])
+        generator = flame.TemplateGenerator(False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -803,6 +803,62 @@ class ServerTests(unittest.TestCase):
                         'image': {'get_param': 'server_0_image'},
                     }
                 }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_excluded_volume_attached(self):
+        attachments = [{'device': '/dev/vdb',
+                        'server_id': '777',
+                        'id': '5678',
+                        'host_name': None,
+                        'volume_id': '5678'}]
+        self.cinder_manager.volumes = [FakeVolume(id=5678,
+                                                  attachments=attachments,
+                                                  bootable='false')]
+        server_args = {
+            "id": 777,
+            "os-extended-volumes:volumes_attached": [{'id': 5678}]}
+        server = FakeServer(**server_args)
+        self.nova_manager.servers = [server]
+        generator = flame.TemplateGenerator(False, True)
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                },
+                'volume_server1_0': {
+                    'description':
+                        'Volume for server server1, device /dev/vdb',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                        'block_device_mapping': [{'volume_id': {
+                            'get_param': 'volume_server1_0'}, 'device_name':
+                            '/dev/vdb'}]
+                    }
+                },
             }
         }
         generator.extract_servers()
