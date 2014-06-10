@@ -184,7 +184,7 @@ class NetworkTests(unittest.TestCase):
         generator.extract_routers()
         self.assertEqual(expected, generator.template)
 
-    def test_router_with_port(self):
+    def test_router_with_ports(self):
         router = {
             'name': 'myrouter',
             'id': '1234',
@@ -799,7 +799,7 @@ class ServerTests(unittest.TestCase):
                         'diskConfig': 'MANUAL',
                         'flavor': {'get_param': 'server_0_flavor'},
                         'networks': [
-                            {'network': {'get_resource': 'private_0'}}],
+                            {'network': {'get_resource': 'network_0'}}],
                         'image': {'get_param': 'server_0_image'},
                     }
                 }
