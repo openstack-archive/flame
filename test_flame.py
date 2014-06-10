@@ -42,11 +42,18 @@ class FakeFlavor(FakeBase):
     name = 'm1.tiny'
     id = '1'
 
+
 class FakeKeypair(FakeBase):
     name = 'key'
     public_key = 'ssh-rsa AAAAB3NzaC'
 
+
+class FakeSecurityGroup(FakeBase):
+    id = '1'
+
+
 class FakeNeutronManager(object):
+    groups = []
 
     def subnet_list(self):
         return []
@@ -58,7 +65,7 @@ class FakeNeutronManager(object):
         return []
 
     def secgroup_list(self):
-        return []
+        return self.groups
 
     def floatingip_list(self):
         return []
@@ -341,7 +348,7 @@ class ServerTests(unittest.TestCase):
         generator.extract_servers()
         self.assertEqual(expected, generator.template)
 
-    def test_server_keypair(self):
+    def test_keypair(self):
         self.nova_manager.servers = [FakeServer(key_name='testkey')]
         generator = flame.TemplateGenerator([], [])
         expected = {
@@ -378,7 +385,7 @@ class ServerTests(unittest.TestCase):
         generator.extract_servers()
         self.assertEqual(expected, generator.template)
 
-    def test_server_boot_from_volume(self):
+    def test_boot_from_volume(self):
         attachments = [{'device': 'vda',
                         'server_id': '777',
                         'id': '5678',
@@ -419,7 +426,7 @@ class ServerTests(unittest.TestCase):
         generator.extract_servers()
         self.assertEqual(expected, generator.template)
 
-    def test_server_volume_attached(self):
+    def test_volume_attached(self):
         attachments = [{'device': '/dev/vdb',
                         'server_id': '777',
                         'id': '5678',
@@ -467,5 +474,56 @@ class ServerTests(unittest.TestCase):
                 },
             }
         }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_security_groups(self):
+        self.neutron_manager.groups = [
+            {"name": "group1", "id": "1", "security_group_rules": [],
+                "description": "Group"}
+        ]
+        self.nova_manager.groups = {'server1': [FakeSecurityGroup()]}
+        self.nova_manager.servers = [FakeServer()]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'group1_0': {
+                    'type': 'OS::Neutron::SecurityGroup',
+                    'properties': {
+                        'description': 'Group',
+                        'name': 'group1',
+                        'rules': []
+                    }
+                },
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'security_groups': [{'get_resource': 'group1_0'}],
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'}
+                    }
+                }
+            }
+        }
+        generator.extract_secgroups()
         generator.extract_servers()
         self.assertEqual(expected, generator.template)

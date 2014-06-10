@@ -305,6 +305,7 @@ class TemplateGenerator(object):
             security_groups = self.build_secgroups(server)
             if security_groups:
                 properties['security_groups'] = security_groups
+
             networks = self.build_networks(server.addresses)
             if networks:
                 properties['networks'] = networks
