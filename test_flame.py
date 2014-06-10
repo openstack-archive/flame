@@ -54,12 +54,14 @@ class FakeSecurityGroup(FakeBase):
 
 class FakeNeutronManager(object):
     groups = []
+    subnets = []
+    networks = []
 
     def subnet_list(self):
-        return []
+        return self.subnets
 
     def network_list(self):
-        return []
+        return self.networks
 
     def router_list(self):
         return []
@@ -596,6 +598,60 @@ class ServerTests(unittest.TestCase):
                         'metadata': {'key': 'value'},
                         'diskConfig': 'MANUAL',
                         'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                    }
+                }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
+
+    def test_networks(self):
+        subnet = {
+            "id": "4321",
+            "name": "private_subnet",
+            "network_id": "1234",
+            "allocation_pools": {"start": "10.0.0.2", "end": "10.0.0.254"},
+            "cidr": "10.0.0.0/24",
+            "dns_nameservers": [],
+            "enable_dhcp": True,
+            "host_routes": [],
+            "ip_version": 4}
+        self.neutron_manager.subnets = [subnet]
+        network = {
+            "id": "1234",
+            "name": "private"}
+        self.neutron_manager.networks = [network]
+        addresses = {"private": [{"addr": "10.0.0.2"}]}
+        self.nova_manager.servers = [FakeServer(addresses=addresses)]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'networks': [
+                            {'network': {'get_resource': 'private_0'}}],
                         'image': {'get_param': 'server_0_image'},
                     }
                 }
