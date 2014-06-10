@@ -566,3 +566,40 @@ class ServerTests(unittest.TestCase):
         }
         generator.extract_servers()
         self.assertEqual(expected, generator.template)
+
+    def test_metadata(self):
+        self.nova_manager.servers = [FakeServer(metadata={"key": "value"})]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'constraints': [{
+                        'custom_constraint': 'glance.image'
+                    }],
+                    'default': 'Fedora 20',
+                    'type': 'string'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'metadata': {'key': 'value'},
+                        'diskConfig': 'MANUAL',
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'},
+                    }
+                }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.template)
