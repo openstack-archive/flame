@@ -73,8 +73,9 @@ class TemplateGenerator(object):
                 'description': description,
             }
         }
-        if constraints:
-            parameter[name]['constraints'] = constraints
+        # (arezmerita) disable cause heat bug #1314240
+        #if constraints:
+        #    parameter[name]['constraints'] = constraints
         if default:
             parameter[name]['default'] = default
         self.template['parameters'].update(parameter)
@@ -204,7 +205,7 @@ class TemplateGenerator(object):
         for n, secgroup in enumerate(self.secgroups):
             if secgroup['name'] == "default":
                 secgroup['name'] = "_default"
-            resource_name = "%s_%d" % (secgroup['name'].replace(' ', '_'), n)
+            resource_name = "security_group_%d" % n
             self.secgroups_resources_names[secgroup['id']] = resource_name
         for secgroup in self.secgroups:
             rules = self._prepare_secgoup_rules(secgroup[

@@ -51,12 +51,14 @@ class FakeKeypair(FakeBase):
 class FakeSecurityGroup(FakeBase):
     id = '1'
 
+
 class FakeNeutronManager(object):
     groups = []
     routers = []
     ports = []
     subnets = []
     networks = []
+    floatingips = []
 
     def subnet_list(self):
         return self.subnets
@@ -74,7 +76,7 @@ class FakeNeutronManager(object):
         return self.groups
 
     def floatingip_list(self):
-        return []
+        return self.floatingips
 
 
 class FakeNovaManager(object):
@@ -103,6 +105,7 @@ class FakeCinderManager(object):
 
     def volume_list(self):
         return self.volumes
+
 
 class NetworkTests(unittest.TestCase):
 
@@ -161,15 +164,17 @@ class NetworkTests(unittest.TestCase):
             'parameters': {
                 'router_0_external_network': {
                     'type': 'string',
-                    'description': 'Router external network',
-                    'constraints': [{'custom_constraint': 'neutron.network'}]}
+                    'description': 'Router external network'
+                }
             },
             'resources': {
                 'router_0_gateway': {
                     'type': 'OS::Neutron::RouterGateway',
                     'properties': {
                         'router_id': {'get_resource': 'router_0'},
-                        'network_id': {'get_param': 'router_0_external_network'}
+                        'network_id': {
+                            'get_param': 'router_0_external_network'
+                        }
                     }
                 },
                 'router_0': {
@@ -217,7 +222,8 @@ class NetworkTests(unittest.TestCase):
             'ip_version': 4,
             'gateway_ip': '10.123.2.1',
             'cidr': '10.123.2.0/27',
-            'id': '1111'}
+            'id': '1111'
+        }
 
         self.neutron_manager.ports = [port]
         self.neutron_manager.subnets = [subnet]
@@ -246,6 +252,566 @@ class NetworkTests(unittest.TestCase):
             }
         }
         generator.extract_routers()
+        self.assertEqual(expected, generator.template)
+
+    def test_network(self):
+        network = {
+            'status': 'ACTIVE',
+            'subnets': ['1111'],
+            'name': 'mynetwork',
+            'router:external': False,
+            'admin_state_up': True,
+            'shared': False,
+            'id': '2222'
+        }
+        self.neutron_manager.networks = [network]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'network_0': {
+                    'type': 'OS::Neutron::Net',
+                    'properties': {
+                        'shared': False,
+                        'name': 'mynetwork',
+                        'admin_state_up': True
+                    }
+                }
+            }
+        }
+        generator.extract_networks()
+        self.assertEqual(expected, generator.template)
+
+    def test_external_network(self):
+        network = {
+            'status': 'ACTIVE',
+            'subnets': ['1111'],
+            'name': 'mynetwork',
+            'router:external': True,
+            'admin_state_up': True,
+            'shared': False,
+            'id': '2222'
+        }
+        self.neutron_manager.networks = [network]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {}
+        }
+        generator.extract_networks()
+        self.assertEqual(expected, generator.template)
+
+    def test_subnet(self):
+        network = {
+            'status': 'ACTIVE',
+            'subnets': ['1111'],
+            'name': 'mynetwork',
+            'router:external': False,
+            'admin_state_up': True,
+            'shared': False,
+            'id': '2222'
+        }
+        subnet = {
+            'name': 'subnet_1111',
+            'enable_dhcp': True,
+            'network_id': '2222',
+            'dns_nameservers': [],
+            'allocation_pools': [{'start': '10.123.2.2',
+                                  'end': '10.123.2.30'}],
+            'host_routes': [],
+            'ip_version': 4,
+            'gateway_ip': '10.123.2.1',
+            'cidr': '10.123.2.0/27',
+            'id': '1111'
+        }
+        self.neutron_manager.networks = [network]
+        self.neutron_manager.subnets = [subnet]
+
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'subnet_0': {
+                    'type': 'OS::Neutron::Subnet',
+                    'properties': {
+                        'network_id': {'get_resource': 'network_0'},
+                        'allocation_pools': [{'start': '10.123.2.2',
+                                              'end': '10.123.2.30'}],
+                        'host_routes': [],
+                        'name': 'subnet_1111',
+                        'enable_dhcp': True,
+                        'ip_version': 4,
+                        'cidr': '10.123.2.0/27',
+                        'dns_nameservers': []
+                    }
+                }
+            }
+        }
+        generator.extract_subnets()
+        self.assertEqual(expected, generator.template)
+
+    def test_floatingip(self):
+        ip = {
+            'router_id': '1111',
+            'status': 'ACTIVE',
+            'floating_network_id': '1234',
+            'fixed_ip_address': '10.0.48.251',
+            'floating_ip_address': '84.39.33.60',
+            'port_id': '4321',
+            'id': '2222'
+        }
+        self.neutron_manager.floatingips = [ip]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'external_network_for_floating_ip_0': {
+                    'type': 'string',
+                    'description': 'Network to allocate floating IP from'
+                }
+            },
+            'resources': {
+                'floatingip_0': {
+                    'type': 'OS::Neutron::FloatingIP',
+                    'properties': {
+                        'floating_network_id': {
+                            'get_param': 'external_network_for_floating_ip_0'
+                        }
+                    }
+                }
+            }
+        }
+        generator.extract_floating()
+        self.assertEqual(expected, generator.template)
+
+    def test_security_group(self):
+        rules = [
+            {
+                'remote_group_id': '1234',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 65535,
+                'port_range_min': 1,
+                'id': '5678',
+                'security_group_id': '1234'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '6789',
+                'security_group_id': '1234'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv6',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '7890',
+                'security_group_id': '1234'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'ingress',
+                'remote_ip_prefix': '0.0.0.0/0',
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 22,
+                'port_range_min': 22,
+                'id': '8901',
+                'security_group_id': '1234'
+            },
+        ]
+        group = {
+            'tenant_id': '7777',
+            'name': 'toto',
+            'description': 'description',
+            'security_group_rules': rules,
+            'id': '1234'
+        }
+
+        self.neutron_manager.groups = [group]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'security_group_0': {
+                    'type': 'OS::Neutron::SecurityGroup',
+                    'properties': {
+                        'rules': [
+                            {
+                                'direction': 'ingress',
+                                'protocol': 'tcp',
+                                'ethertype': 'IPv4',
+                                'port_range_max': 65535,
+                                'port_range_min': 1,
+                                'remote_mode': 'remote_group_id'
+                            },
+                            {
+                                'ethertype': 'IPv4',
+                                'direction': 'egress'
+                            },
+                            {
+                                'ethertype': 'IPv6',
+                                'direction': 'egress'
+                            },
+                            {
+                                'direction': 'ingress',
+                                'protocol': 'tcp',
+                                'ethertype': 'IPv4',
+                                'port_range_max': 22,
+                                'port_range_min': 22,
+                                'remote_ip_prefix': '0.0.0.0/0'
+                            }
+                        ],
+                        'description': 'description',
+                        'name': 'toto'
+                    }
+                }
+            }
+        }
+        generator.extract_secgroups()
+        self.assertEqual(expected, generator.template)
+
+    def test_security_group_default(self):
+        rules = [
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv6',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '1234',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': '1111',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv6',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '2345',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'ingress',
+                'remote_ip_prefix': '0.0.0.0/0',
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 22,
+                'port_range_min': 22,
+                'id': '3456',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '4567',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': '1111',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '5678',
+                'security_group_id': '1111'
+            }
+        ]
+        group = {
+            'tenant_id': '7777',
+            'name': 'default',
+            'description': 'default',
+            'security_group_rules': rules,
+            'id': '1111'
+        }
+
+        self.neutron_manager.groups = [group]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'security_group_0': {
+                    'type': 'OS::Neutron::SecurityGroup',
+                    'properties': {
+                        'rules': [
+                            {
+                                'ethertype': 'IPv6',
+                                'direction': 'egress'
+                            },
+                            {
+                                'ethertype': 'IPv6',
+                                'direction': 'ingress',
+                                'remote_mode': 'remote_group_id'
+                            },
+                            {
+                                'direction': 'ingress',
+                                'protocol': 'tcp',
+                                'ethertype': 'IPv4',
+                                'port_range_max': 22,
+                                'port_range_min': 22,
+                                'remote_ip_prefix': '0.0.0.0/0'
+                            },
+                            {
+                                'ethertype': 'IPv4',
+                                'direction': 'egress'
+                            },
+                            {
+                                'ethertype': 'IPv4',
+                                'direction': 'ingress',
+                                'remote_mode': 'remote_group_id'
+                            }
+                        ],
+                        'description': 'default',
+                        'name': '_default'
+                    }
+                }
+            }
+        }
+        generator.extract_secgroups()
+        self.assertEqual(expected, generator.template)
+
+    def test_security_groups(self):
+        rules1 = [
+            {
+                'remote_group_id': '2222',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '01234',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv6',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '1234',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '2345',
+                'security_group_id': '1111'
+            },
+            {
+                'remote_group_id': '2222',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': 'icmp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '3456',
+                'security_group_id': '1111'
+            }
+        ]
+
+        rules2 = [
+            {
+                'remote_group_id': '1111',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': 'udp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 8888,
+                'port_range_min': 7777,
+                'id': '4567',
+                'security_group_id': '2222'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv6',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '5678',
+                'security_group_id': '2222'
+            },
+            {
+                'remote_group_id': None,
+                'direction': 'egress',
+                'remote_ip_prefix': None,
+                'protocol': None,
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': None,
+                'port_range_min': None,
+                'id': '6789',
+                'security_group_id': '2222'
+            },
+            {
+                'remote_group_id': '1111',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 65535,
+                'port_range_min': 1,
+                'id': '7890',
+                'security_group_id': '2222'
+            }
+        ]
+        group1 = {
+            'tenant_id': '7777',
+            'name': 'security_group_1',
+            'description': 'security_group_1',
+            'security_group_rules': rules1,
+            'id': '1111'
+        }
+        group2 = {
+            'tenant_id': '7777',
+            'name': 'security_group_2',
+            'description': 'security_group_2',
+            'security_group_rules': rules2,
+            'id': '2222'
+        }
+        self.neutron_manager.groups = [group1, group2]
+        generator = flame.TemplateGenerator([], [])
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'security_group_0': {
+                    'type': 'OS::Neutron::SecurityGroup',
+                    'properties': {
+                        'rules': [
+                            {
+                                'remote_group_id': {
+                                    'get_resource': 'security_group_1'
+                                },
+                                'direction': 'ingress',
+                                'ethertype': 'IPv4',
+                                'remote_mode': 'remote_group_id'
+                            },
+                            {
+                                'ethertype': 'IPv6',
+                                'direction': 'egress'
+                            },
+                            {
+                                'ethertype': 'IPv4',
+                                'direction': 'egress'
+                            },
+                            {
+                                'remote_group_id': {
+                                    'get_resource': 'security_group_1'
+                                },
+                                'direction': 'ingress',
+                                'protocol': 'icmp',
+                                'ethertype': 'IPv4',
+                                'remote_mode': 'remote_group_id'
+                            }
+                        ],
+                        'description': 'security_group_1',
+                        'name': 'security_group_1'
+                    }
+                },
+                'security_group_1': {
+                    'type': 'OS::Neutron::SecurityGroup',
+                    'properties': {
+                        'rules': [
+                            {
+                                'remote_group_id': {
+                                    'get_resource': 'security_group_0'
+                                },
+                                'direction': 'ingress',
+                                'protocol': 'udp',
+                                'ethertype': 'IPv4',
+                                'port_range_max': 8888,
+                                'port_range_min': 7777,
+                                'remote_mode': 'remote_group_id'
+                            },
+                            {
+                                'ethertype': 'IPv6',
+                                'direction': 'egress'
+                            },
+                            {
+                                'ethertype': 'IPv4',
+                                'direction': 'egress'
+                            },
+                            {
+                                'remote_group_id': {
+                                    'get_resource': 'security_group_0'
+                                },
+                                'direction': 'ingress',
+                                'protocol': 'tcp',
+                                'ethertype': 'IPv4',
+                                'port_range_max': 65535,
+                                'port_range_min': 1,
+                                'remote_mode': 'remote_group_id'
+                            }
+                        ],
+                        'description': 'security_group_2',
+                        'name': 'security_group_2'
+                    }
+                }
+            }
+        }
+        generator.extract_secgroups()
         self.assertEqual(expected, generator.template)
 
 
@@ -350,9 +916,6 @@ class VolumeTests(unittest.TestCase):
             'parameters': {
                 'volume_0_image': {
                     'description': 'Image to create volume volume_0 from',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'type': 'string'
                 }
             },
@@ -476,9 +1039,6 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
@@ -512,9 +1072,6 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
@@ -604,9 +1161,6 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
@@ -648,15 +1202,12 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
             },
             'resources': {
-                'group1_0': {
+                'security_group_0': {
                     'type': 'OS::Neutron::SecurityGroup',
                     'properties': {
                         'description': 'Group',
@@ -669,7 +1220,11 @@ class ServerTests(unittest.TestCase):
                     'properties': {
                         'name': 'server1',
                         'diskConfig': 'MANUAL',
-                        'security_groups': [{'get_resource': 'group1_0'}],
+                        'security_groups': [
+                            {
+                                'get_resource': 'security_group_0'
+                            }
+                        ],
                         'flavor': {'get_param': 'server_0_flavor'},
                         'image': {'get_param': 'server_0_image'}
                     }
@@ -694,9 +1249,6 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
@@ -731,9 +1283,6 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
@@ -784,9 +1333,6 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 }
