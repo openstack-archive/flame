@@ -120,6 +120,25 @@ class NetworkTests(unittest.TestCase):
         flame.TemplateGenerator.cinder_manager = (
             lambda x: self.cinder_manager)
 
+    def test_keypair(self):
+        generator = flame.TemplateGenerator(False, False)
+        expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {},
+            'resources': {
+                'key_0': {
+                    'type': 'OS::Nova::KeyPair',
+                    'properties': {
+                        'public_key': 'ssh-rsa XXXX',
+                        'name': 'testkey'
+                    }
+                }
+            }
+        }
+        generator.extract_keys()
+        self.assertEqual(expected, generator.template)
+
     def test_router(self):
         router = {
             'name': 'myrouter',
@@ -1380,15 +1399,12 @@ class ServerTests(unittest.TestCase):
                 },
                 'server_0_image': {
                     'description': 'Image to use to boot server server_0',
-                    'constraints': [{
-                        'custom_constraint': 'glance.image'
-                    }],
                     'default': 'Fedora 20',
                     'type': 'string'
                 },
                 'volume_server1_0': {
-                    'description':
-                        'Volume for server server1, device /dev/vdb',
+                    'description': 'Volume for server server1, device '
+                                   '/dev/vdb',
                     'type': 'string'
                 }
             },
@@ -1404,7 +1420,7 @@ class ServerTests(unittest.TestCase):
                             'get_param': 'volume_server1_0'}, 'device_name':
                             '/dev/vdb'}]
                     }
-                },
+                }
             }
         }
         generator.extract_servers()
