@@ -26,6 +26,9 @@ Available options can be displayed by using `flame.py -h`:
                            option should be used with caution.
       --exclude_servers    Do not export in template server resources
       --exclude_volumes    Do not export in template volume resources
+      --generate-stack-data
+                          In addition to template, generate Heat stack data
+                          file
 
 
 Example
