@@ -101,7 +101,10 @@ class CinderManager(object):
                                            insecure=insecure)
 
     def volume_list(self):
-        return self.client.volumes.list()
+        volumes = []
+        for vol in self.client.volumes.list():
+            volumes.append(self.client.volumes.get(vol.id))
+        return volumes
 
     def snapshot_list(self):
         return self.client.volume_snapshots.list()

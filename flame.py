@@ -15,6 +15,12 @@ parameters:
 resources:
 '''
 
+stack_data_skeleton = '''
+status: 'COMPLETE'
+action: 'CREATE'
+resources:
+'''
+
 
 class TemplateGenerator(object):
 
@@ -22,26 +28,25 @@ class TemplateGenerator(object):
     nova_manager = managers.NovaManager
     cinder_manager = managers.CinderManager
 
-    def __init__(self, exclude_servers, exclude_volumes, *arguments):
+    def __init__(self, exclude_servers, exclude_volumes,
+                 generate_data, *arguments):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
+        self.generate_data = generate_data
 
         self.template = yaml.load(template_skeleton)
         self.template['resources'] = {}
         self.template['parameters'] = {}
 
+        if self.generate_data:
+            self.stack_data = yaml.load(stack_data_skeleton)
+            self.stack_data['resources'] = {}
+
         self.neutron = self.neutron_manager(*arguments)
-        self.subnets = dict(
-            (subnet['id'], (index, subnet))
-            for index, subnet in enumerate(self.neutron.subnet_list()))
-
-        self.networks = dict(
-            (network['id'], (index, network))
-            for index, network in enumerate(self.neutron.network_list()))
-
+        self.subnets = self.build_data(self.neutron.subnet_list())
+        self.networks = self.build_data(self.neutron.network_list())
         self.routers = self.neutron.router_list()
-        self.secgroups = self.neutron.secgroup_list()
-        self.secgroups_resources_names = {}
+        self.secgroups = self.build_data(self.neutron.secgroup_list())
         self.floatingips = self.neutron.floatingip_list()
         self.external_networks = []
 
@@ -51,19 +56,41 @@ class TemplateGenerator(object):
             for index, key in enumerate(self.nova.keypair_list()))
 
         if not self.exclude_servers:
-            self.flavors = dict(
-                (flavor.id, flavor) for flavor in self.nova.flavor_list())
-            self.servers = self.nova.server_list()
+            self.flavors = self.build_data(self.nova.flavor_list())
+            self.servers = self.build_data(self.nova.server_list())
 
         if (not self.exclude_volumes or
                 (self.exclude_volumes and not self.exclude_servers)):
             self.cinder = self.cinder_manager(*arguments)
-            self.volumes = dict(
-                (volume.id, (index, volume))
-                for index, volume in enumerate(self.cinder.volume_list()))
+            self.volumes = self.build_data(self.cinder.volume_list())
 
-    def print_template(self):
-        print(yaml.safe_dump(self.template, default_flow_style=False))
+    def build_data(self, data):
+        if not data:
+            return {}
+
+        if isinstance(data[0], dict):
+            return dict((element['id'], (index, element))
+                        for index, element in enumerate(data))
+        else:
+            return dict((element.id, (index, element))
+                        for index, element in enumerate(data))
+
+    def print_generated(self, file):
+        print(yaml.safe_dump(file, default_flow_style=False))
+
+    def add_resource(self, name, status, resource_id, resource_type):
+        resource = {
+            name: {
+                'status': status,
+                'name': name,
+                'resource_data': {},
+                'resource_id': resource_id,
+                'action': 'CREATE',
+                'type': resource_type,
+                'metadata': {}
+            }
+        }
+        self.stack_data['resources'].update(resource)
 
     def add_parameter(self, name, description, parameter_type,
                       constraints=None, default=None):
@@ -80,17 +107,28 @@ class TemplateGenerator(object):
             parameter[name]['default'] = default
         self.template['parameters'].update(parameter)
 
-    def add_router_gateway_resource(self, router_resource_name):
+    def add_router_gateway_resource(self, router_resource_name, router):
         router_external_network_name = "%s_external_network" % \
                                        router_resource_name
         router_gateway_name = "%s_gateway" % router_resource_name
+        resource_type = 'OS::Neutron::RouterGateway'
         description = "Router external network"
         constraints = [{'custom_constraint': "neutron.network"}]
+        external_network = router['external_gateway_info']['network_id']
         self.add_parameter(router_external_network_name, description,
-                           'string', constraints=constraints)
+                           'string', constraints=constraints,
+                           default=external_network)
+
+        if self.generate_data:
+            resource_id = "%s:%s" % (router['id'], external_network)
+            self.add_resource(router_gateway_name,
+                              'COMPLETE',
+                              resource_id,
+                              resource_type)
+
         resource = {
             router_gateway_name: {
-                'type': 'OS::Neutron::RouterGateway',
+                'type': resource_type,
                 'properties': {
                     'router_id': {'get_resource': router_resource_name},
                     'network_id': {'get_param': router_external_network_name}
@@ -104,11 +142,20 @@ class TemplateGenerator(object):
             if port['device_owner'] == "network:router_interface":
                 port_resource_name = "%s_interface_%d" % \
                                      (router_resource_name, n)
+                resource_type = 'OS::Neutron::RouterInterface'
                 subnet_resource_name = self.get_subnet_resource_name(
                     port['fixed_ips'][0]['subnet_id'])
+
+                if self.generate_data:
+                    resource_id = "%s:subnet_id=%s" % \
+                                  (port['device_id'],
+                                   port['fixed_ips'][0]['subnet_id'])
+                    self.add_resource(port_resource_name, 'COMPLETE',
+                                      resource_id, resource_type)
+
                 resource = {
                     port_resource_name: {
-                        'type': 'OS::Neutron::RouterInterface',
+                        'type': resource_type,
                         'properties': {
                         'subnet_id': {'get_resource': subnet_resource_name},
                         'router_id': {'get_resource': router_resource_name}
@@ -120,21 +167,30 @@ class TemplateGenerator(object):
     def extract_routers(self):
         for n, router in enumerate(self.routers):
             router_resource_name = "router_%d" % n
+            resource_type = 'OS::Neutron::Router'
             resource = {
                 router_resource_name: {
-                    'type': 'OS::Neutron::Router',
+                    'type': resource_type,
                     'properties': {
                         'name': router['name'],
                         'admin_state_up': router['admin_state_up'],
                     }
                 }
             }
+
+            if self.generate_data:
+                self.add_resource(router_resource_name,
+                                  'COMPLETE',
+                                  router['id'],
+                                  resource_type)
+
             self.template['resources'].update(resource)
             self.add_router_interface_resources(
                 router_resource_name,
                 self.neutron.router_interfaces_list(router))
             if router['external_gateway_info']:
-                self.add_router_gateway_resource(router_resource_name)
+                self.add_router_gateway_resource(router_resource_name,
+                                                 router)
 
     def extract_networks(self):
         for n, network in self.networks.itervalues():
@@ -142,9 +198,17 @@ class TemplateGenerator(object):
                 self.external_networks.append(network['id'])
                 continue
             network_resource_name = "network_%d" % n
+            resource_type = 'OS::Neutron::Net'
+
+            if self.generate_data:
+                self.add_resource(network_resource_name,
+                                  'COMPLETE',
+                                  network['id'],
+                                  resource_type)
+
             resource = {
                 network_resource_name: {
-                    'type': 'OS::Neutron::Net',
+                    'type': resource_type,
                     'properties': {
                         'name': network['name'],
                         'admin_state_up': network['admin_state_up'],
@@ -165,10 +229,17 @@ class TemplateGenerator(object):
             if subnet['network_id'] in self.external_networks:
                 continue
             subnet_resource_name = "subnet_%d" % n
+            resource_type = 'OS::Neutron::Subnet'
+
+            if self.generate_data:
+                self.add_resource(subnet_resource_name,
+                                  'COMPLETE',
+                                  subnet['id'],
+                                  resource_type)
             net_name = self.get_network_resource_name(subnet['network_id'])
             resource = {
                 subnet_resource_name: {
-                    'type': 'OS::Neutron::Subnet',
+                    'type': resource_type,
                     'properties': {
                         'name': subnet['name'],
                         'allocation_pools': subnet['allocation_pools'],
@@ -183,36 +254,44 @@ class TemplateGenerator(object):
             }
             self.template['resources'].update(resource)
 
-    def _prepare_secgoup_rules(self, rules):
-        prepared_rules = []
+    def _build_rules(self, rules):
+        brules = []
         for rule in rules:
             rg_id = rule['remote_group_id']
             if rg_id is not None:
                 rule['remote_mode'] = "remote_group_id"
-                res_secgr = self.secgroups_resources_names[rg_id]
+                resource_name = "security_group_%d" % self.secgroups[rg_id][0]
                 if rg_id == rule['security_group_id']:
                     del rule['remote_group_id']
                 else:
-                    rule['remote_group_id'] = {'get_resource': res_secgr}
+                    rule['remote_group_id'] = {'get_resource': resource_name}
             del rule['tenant_id']
             del rule['id']
             del rule['security_group_id']
             rule = dict((k, v) for k, v in rule.iteritems() if v is not None)
-            prepared_rules.append(rule)
-        return prepared_rules
+            brules.append(rule)
+        return brules
 
     def extract_secgroups(self):
-        for n, secgroup in enumerate(self.secgroups):
+        for n, secgroup in self.secgroups.itervalues():
+
+            resource_name = "security_group_%d" % n
+            resource_type = 'OS::Neutron::SecurityGroup'
+
+            if secgroup['name'] == 'default' and self.generate_data:
+                continue
+
             if secgroup['name'] == "default":
                 secgroup['name'] = "_default"
-            resource_name = "security_group_%d" % n
-            self.secgroups_resources_names[secgroup['id']] = resource_name
-        for secgroup in self.secgroups:
-            rules = self._prepare_secgoup_rules(secgroup[
-                'security_group_rules'])
+
+            if self.generate_data:
+                self.add_resource(resource_name, 'COMPLETE',
+                                  secgroup['id'], resource_type)
+
+            rules = self._build_rules(secgroup['security_group_rules'])
             resource = {
-                self.secgroups_resources_names[secgroup['id']]: {
-                    'type': 'OS::Neutron::SecurityGroup',
+                resource_name: {
+                    'type': resource_type,
                     'properties': {
                         'description': secgroup['description'],
                         'name': secgroup['name'],
@@ -225,9 +304,17 @@ class TemplateGenerator(object):
     def extract_keys(self):
         for n, key in self.keys.itervalues():
             key_resource_name = "key_%d" % n
+            resource_type = 'OS::Nova::KeyPair'
+
+            if self.generate_data:
+                self.add_resource(key_resource_name,
+                                  'COMPLETE',
+                                  key.id,
+                                  resource_type)
+
             resource = {
                 key_resource_name: {
-                    'type': 'OS::Nova::KeyPair',
+                    'type': resource_type,
                     'properties': {
                         'name': key.name,
                         'public_key': key.public_key
@@ -238,14 +325,26 @@ class TemplateGenerator(object):
 
     def build_secgroups(self, server):
         security_groups = []
-        server_secgroups = []
-        for i in self.nova.server_security_group_list(server):
-            if i not in server_secgroups:
-                server_secgroups.append(i)
+        server_secgroups = set(self.nova.server_security_group_list(server))
 
+        secgroup_default_parameter = None
         for secgr in server_secgroups:
-            resource = self.secgroups_resources_names[secgr.id]
-            security_groups.append({'get_resource': resource})
+            if secgr.name == 'default' and self.generate_data:
+                if not secgroup_default_parameter:
+                    server_res_name = 'server_%d' % self.servers[server.id][0]
+                    param_name = "%s_default_security_group" % server_res_name
+                    description = "Default security group for server %s" % \
+                                  server.name
+                    default = secgr.id
+                    self.add_parameter(param_name, description,
+                                       'string', default=default)
+                    secgroup_default_parameter = {'get_param': param_name}
+                security_groups.append(secgroup_default_parameter)
+            else:
+                resource_name = "security_group_%d" % \
+                                self.secgroups[secgr.id][0]
+                security_groups.append({'get_resource': resource_name})
+
         return security_groups
 
     def build_networks(self, addresses):
@@ -263,8 +362,16 @@ class TemplateGenerator(object):
         return networks
 
     def extract_servers(self):
-        for n, server in enumerate(self.servers):
+        for n, server in self.servers.itervalues():
             resource_name = "server_%d" % n
+            resource_type = 'OS::Nova::Server'
+
+            if self.generate_data:
+                self.add_resource(resource_name,
+                                  'COMPLETE',
+                                  server.id,
+                                  resource_type)
+
             properties = {
                 'name': server.name,
                 'diskConfig': getattr(server, 'OS-DCF:diskConfig')
@@ -276,7 +383,7 @@ class TemplateGenerator(object):
             # Flavor
             flavor_parameter_name = "%s_flavor" % resource_name
             description = "Flavor to use for server %s" % resource_name
-            default = self.flavors[server.flavor['id']].name
+            default = self.flavors[server.flavor['id']][1].name
             self.add_parameter(flavor_parameter_name, description, 'string',
                                default=default)
             properties['flavor'] = {'get_param': flavor_parameter_name}
@@ -289,7 +396,7 @@ class TemplateGenerator(object):
                 constraints = [{'custom_constraint': "glance.image"}]
                 self.add_parameter(
                     image_parameter_name, description, 'string',
-                    default=server.image, constraints=constraints)
+                    default=server.image['id'], constraints=constraints)
                 properties['image'] = {'get_param': image_parameter_name}
 
             # Keypair
@@ -328,13 +435,13 @@ class TemplateGenerator(object):
                         {'volume_id': {'get_param': volume_parameter_name},
                          'device_name': device})
                     self.add_parameter(volume_parameter_name, description,
-                                       'string')
+                                       'string', default=server_volume['id'])
             if server_volumes:
                 properties['block_device_mapping'] = server_volumes
 
             resource = {
                 resource_name: {
-                    'type': 'OS::Nova::Server',
+                    'type': resource_type,
                     'properties': properties
                 }
             }
@@ -344,9 +451,17 @@ class TemplateGenerator(object):
         for n, ip in enumerate(self.floatingips):
             ip_resource_name = "floatingip_%d" % n
             net_param_name = "external_network_for_floating_ip_%d" % n
+            resource_type = 'OS::Neutron::FloatingIP'
+
+            if self.generate_data:
+                self.add_resource(ip_resource_name,
+                                  'COMPLETE',
+                                  ip['id'],
+                                  resource_type)
+
             resource = {
                 ip_resource_name: {
-                    'type': 'OS::Neutron::FloatingIP',
+                    'type': resource_type,
                     'properties': {
                         'floating_network_id': {'get_param': net_param_name}
                     }
@@ -354,13 +469,20 @@ class TemplateGenerator(object):
             }
             description = "Network to allocate floating IP from"
             constraints = [{'custom_constraint': "neutron.network"}]
+            default = ip['floating_network_id']
             self.add_parameter(net_param_name, description, 'string',
-                               constraints=constraints)
+                               constraints=constraints, default=default)
             self.template['resources'].update(resource)
 
     def extract_volumes(self):
         for n, volume in self.volumes.itervalues():
             resource_name = "volume_%d" % n
+            resource_type = 'OS::Cinder::Volume'
+
+            if self.generate_data:
+                self.add_resource(resource_name, 'COMPLETE',
+                                  volume.id, resource_type)
+
             properties = {
                 'size': volume.size
             }
@@ -378,15 +500,18 @@ class TemplateGenerator(object):
                 key = "%s_image" % resource_name
                 description = "Image to create volume %s from" % resource_name
                 constraints = [{'custom_constraint': "glance.image"}]
-                self.add_parameter(
-                    key, description, 'string', constraints=constraints)
+                default = volume.volume_image_metadata['image_id']
+                self.add_parameter(key, description, 'string',
+                                   constraints=constraints,
+                                   default=default)
                 properties['image'] = {'get_param': key}
             if volume.snapshot_id:
                 key = "%s_snapshot_id" % resource_name
                 properties['snapshot_id'] = {'get_param': key}
                 description = (
                     "Snapshot to create volume %s from" % resource_name)
-                self.add_parameter(key, description, 'string')
+                self.add_parameter(key, description, 'string',
+                                   default=volume.snapshot_id)
             if volume.display_name:
                 properties['name'] = volume.display_name
             if volume.display_description:
@@ -402,7 +527,7 @@ class TemplateGenerator(object):
                 properties['metadata'] = volume.metadata
             resource = {
                 resource_name: {
-                    'type': 'OS::Cinder::Volume',
+                    'type': resource_type,
                     'properties': properties
                 }
             }
@@ -422,11 +547,14 @@ class TemplateGenerator(object):
         if not self.exclude_volumes:
             self.extract_volumes()
 
-        self.print_template()
+        self.print_generated(self.template)
+
+        if self.generate_data:
+            self.print_generated(self.stack_data)
 
 
 def main():
-    desc = "Generate Heat Template"
+    desc = "Heat template and data file generator"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument("--username", type=str,
                         default=os.environ.get("OS_USERNAME"),
@@ -450,18 +578,24 @@ def main():
                              "server's certificate will not be verified "
                              "against any certificate authorities. This "
                              "option should be used with caution.")
-    parser.add_argument('--exclude_servers', action='store_true',
+    parser.add_argument('--exclude-servers', action='store_true',
                         default=False,
                         help="Do not export in template server resources")
-    parser.add_argument('--exclude_volumes', action='store_true',
+    parser.add_argument('--exclude-volumes', action='store_true',
                         default=False,
                         help="Do not export in template volume resources")
+    parser.add_argument('--generate-stack-data', action='store_true',
+                        default=False,
+                        help="In addition to template, generate Heat "
+                             "stack data file.")
 
     args = parser.parse_args()
     arguments = (args.username, args.password, args.project, args.auth_url,
                  args.insecure)
-    TemplateGenerator(args.exclude_servers, args.exclude_volumes, *arguments)\
-        .run()
+    TemplateGenerator(args.exclude_servers,
+                      args.exclude_volumes,
+                      args.generate_stack_data,
+                      *arguments).run()
 
 if __name__ == "__main__":
     main()
