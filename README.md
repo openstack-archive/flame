@@ -1,5 +1,11 @@
-Flame: Generate Heat Template
+Flame: Automatic Heat template generation
 ============================================
+Description
+-----------
+
+The detailed description can be found here:
+
+> http://dev.cloudwatt.com/en/blog/introducing-flame-automatic-heat-template-generation.html
 
 Usage
 -----
@@ -11,7 +17,7 @@ Available options can be displayed by using `flame.py -h`:
                     [--project PROJECT] [--auth_url AUTH_URL] [--insecure]
                     [--exclude_servers] [--exclude_volumes]
 
-    Generate Heat Template
+    Heat template and data file generator
 
     optional arguments:
       -h, --help           show this help message and exit
