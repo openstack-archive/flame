@@ -48,6 +48,7 @@ class FakeFlavor(FakeBase):
 
 class FakeKeypair(FakeBase):
     name = 'key'
+    id = 'key'
     public_key = 'ssh-rsa AAAAB3NzaC'
 
 
@@ -109,6 +110,491 @@ class FakeCinderManager(object):
 
     def volume_list(self):
         return self.volumes
+
+
+class StackDataTests(unittest.TestCase):
+    def setUp(self):
+        self.neutron_manager = FakeNeutronManager()
+        flame.TemplateGenerator.neutron_manager = (
+            lambda x: self.neutron_manager)
+        self.nova_manager = FakeNovaManager()
+        flame.TemplateGenerator.nova_manager = (
+            lambda x: self.nova_manager)
+        self.cinder_manager = FakeCinderManager()
+        flame.TemplateGenerator.cinder_manager = (
+            lambda x: self.cinder_manager)
+
+    def test_keypair(self):
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'key_0': {
+                    'type': 'OS::Nova::KeyPair',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'key_0',
+                    'resource_data': {},
+                    'resource_id': 'key',
+                    'status': 'COMPLETE'
+                }
+            }
+        }
+        generator.extract_keys()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_router(self):
+        router = {
+            'name': 'myrouter',
+            'id': '1234',
+            'admin_state_up': 'true',
+            'external_gateway_info': None
+        }
+        self.neutron_manager.routers = [router]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'router_0': {
+                    'type': 'OS::Neutron::Router',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'router_0',
+                    'resource_data': {},
+                    'resource_id': '1234',
+                    'status': 'COMPLETE'
+                }
+            }
+        }
+        generator.extract_routers()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_router_with_external_gateway(self):
+        router = {
+            'name': 'myrouter',
+            'id': '1234',
+            'admin_state_up': 'true',
+            'external_gateway_info': {
+                'network_id': '8765',
+                'enable_snat': 'true'
+            }
+        }
+        self.neutron_manager.routers = [router]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'router_0': {
+                    'type': 'OS::Neutron::Router',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'router_0',
+                    'resource_data': {},
+                    'resource_id': '1234',
+                    'status': 'COMPLETE'
+                },
+                'router_0_gateway': {
+                    'type': 'OS::Neutron::RouterGateway',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'router_0_gateway',
+                    'resource_data': {},
+                    'resource_id': '1234:8765',
+                    'status': 'COMPLETE'
+                }
+            }
+        }
+
+        generator.extract_routers()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_router_with_ports(self):
+        router = {
+            'name': 'myrouter',
+            'id': '1234',
+            'admin_state_up': 'true',
+            'external_gateway_info': None
+        }
+        port = {
+            'status': 'ACTIVE',
+            'name': '',
+            'allowed_address_pairs': [],
+            'admin_state_up': True,
+            'network_id': '4444',
+            'extra_dhcp_opts': [],
+            'binding:vnic_type': 'normal',
+            'device_owner': 'network:router_interface',
+            'mac_address': 'fa:16:3e:4b:8c:98',
+            'fixed_ips': [{'subnet_id': '1111', 'ip_address': '10.123.2.3'}],
+            'id': '1234567',
+            'security_groups': [],
+            'device_id': '1234'
+        }
+        subnet = {
+            'name': 'subnet_1111',
+            'enable_dhcp': True,
+            'network_id': '1234',
+            'dns_nameservers': [],
+            'allocation_pools': [{'start': '10.123.2.2',
+                                  'end': '10.123.2.30'}],
+            'host_routes': [],
+            'ip_version': 4,
+            'gateway_ip': '10.123.2.1',
+            'cidr': '10.123.2.0/27',
+            'id': '1111'
+        }
+
+        self.neutron_manager.ports = [port]
+        self.neutron_manager.subnets = [subnet]
+        self.neutron_manager.routers = [router]
+
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'router_0': {
+                    'type': 'OS::Neutron::Router',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'router_0',
+                    'resource_data': {},
+                    'resource_id': '1234',
+                    'status': 'COMPLETE'
+                },
+                'router_0_interface_0': {
+                    'type': 'OS::Neutron::RouterInterface',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'router_0_interface_0',
+                    'resource_data': {},
+                    'resource_id': '1234:subnet_id=1111',
+                    'status': 'COMPLETE'
+                }
+            }
+        }
+        generator.extract_routers()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_network(self):
+        network = {
+            'status': 'ACTIVE',
+            'subnets': ['1111'],
+            'name': 'mynetwork',
+            'router:external': False,
+            'admin_state_up': True,
+            'shared': False,
+            'id': '2222'
+        }
+        self.neutron_manager.networks = [network]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'network_0': {
+                    'type': 'OS::Neutron::Net',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'network_0',
+                    'resource_data': {},
+                    'resource_id': '2222',
+                    'status': 'COMPLETE'
+                }
+            }
+        }
+        generator.extract_networks()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_external_network(self):
+        network = {
+            'status': 'ACTIVE',
+            'subnets': ['1111'],
+            'name': 'internet',
+            'router:external': True,
+            'admin_state_up': True,
+            'shared': False,
+            'id': '2222'
+        }
+        self.neutron_manager.networks = [network]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {}
+        }
+        generator.extract_networks()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_subnet(self):
+        network = {
+            'status': 'ACTIVE',
+            'subnets': ['1111'],
+            'name': 'mynetwork',
+            'router:external': False,
+            'admin_state_up': True,
+            'shared': False,
+            'id': '2222'
+        }
+        subnet = {
+            'name': 'subnet_1111',
+            'enable_dhcp': True,
+            'network_id': '2222',
+            'dns_nameservers': [],
+            'allocation_pools': [{'start': '10.123.2.2',
+                                  'end': '10.123.2.30'}],
+            'host_routes': [],
+            'ip_version': 4,
+            'gateway_ip': '10.123.2.1',
+            'cidr': '10.123.2.0/27',
+            'id': '1111'
+        }
+        self.neutron_manager.networks = [network]
+        self.neutron_manager.subnets = [subnet]
+
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'subnet_0': {
+                    'type': 'OS::Neutron::Subnet',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'subnet_0',
+                    'resource_data': {},
+                    'resource_id': '1111',
+                    'status': 'COMPLETE'
+                }
+            }
+
+        }
+        generator.extract_subnets()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_floatingip(self):
+        ip = {
+            'router_id': '1111',
+            'status': 'ACTIVE',
+            'floating_network_id': '1234',
+            'fixed_ip_address': '10.0.48.251',
+            'floating_ip_address': '84.39.33.60',
+            'port_id': '4321',
+            'id': '2222'
+        }
+        self.neutron_manager.floatingips = [ip]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'floatingip_0': {
+                    'type': 'OS::Neutron::FloatingIP',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'floatingip_0',
+                    'resource_data': {},
+                    'resource_id': '2222',
+                    'status': 'COMPLETE'
+                }
+            }
+
+        }
+        generator.extract_floating()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_security_group(self):
+        rules = [
+            {
+                'remote_group_id': None,
+                'direction': 'ingress',
+                'remote_ip_prefix': '0.0.0.0/0',
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 22,
+                'port_range_min': 22,
+                'id': '8901',
+                'security_group_id': '1234'
+            },
+        ]
+        group = {
+            'tenant_id': '7777',
+            'name': 'somename',
+            'description': 'description',
+            'security_group_rules': rules,
+            'id': '1234'
+        }
+
+        self.neutron_manager.groups = [group]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'security_group_0': {
+                    'type': 'OS::Neutron::SecurityGroup',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'security_group_0',
+                    'resource_data': {},
+                    'resource_id': '1234',
+                    'status': 'COMPLETE'
+                }
+            }
+        }
+        generator.extract_secgroups()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_default_security_group(self):
+        rules = [
+            {
+                'remote_group_id': None,
+                'direction': 'ingress',
+                'remote_ip_prefix': '0.0.0.0/0',
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_max': 22,
+                'port_range_min': 22,
+                'id': '8901',
+                'security_group_id': '1234'
+            },
+        ]
+        group = {
+            'tenant_id': '7777',
+            'name': 'default',
+            'description': 'default',
+            'security_group_rules': rules,
+            'id': '1234'
+        }
+
+        self.neutron_manager.groups = [group]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {}
+        }
+        generator.extract_secgroups()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_volume(self):
+        self.cinder_manager.volumes = [FakeVolume()]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'volume_0': {
+                    'type': 'OS::Cinder::Volume',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'volume_0',
+                    'resource_data': {},
+                    'resource_id': 1234,
+                    'status': 'COMPLETE'
+                }
+            }
+
+        }
+        generator.extract_volumes()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_server(self):
+        self.nova_manager.servers = [FakeServer()]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'server_0',
+                    'resource_data': {},
+                    'resource_id': '1234',
+                    'status': 'COMPLETE'
+                }
+            }
+
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.stack_data)
+
+    def test_server_with_default_security_group(self):
+        self.neutron_manager.groups = [
+            {
+                "name": "default",
+                "id": "1",
+                "security_group_rules": [],
+                "description": "default"
+            }
+        ]
+        self.nova_manager.groups = {'server1': [FakeSecurityGroup(
+            name='default', description='default')]}
+        self.nova_manager.servers = [FakeServer()]
+        generator = flame.TemplateGenerator(False, False, True)
+        expected = {
+            'action': 'CREATE',
+            'status': 'COMPLETE',
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'action': 'CREATE',
+                    'metadata': {},
+                    'name': 'server_0',
+                    'resource_data': {},
+                    'resource_id': '1234',
+                    'status': 'COMPLETE'
+                }
+            }
+
+        }
+        template_expected = {
+            'heat_template_version': datetime.date(2013, 5, 23),
+            'description': 'Generated template',
+            'parameters': {
+                'server_0_flavor': {
+                    'default': 'm1.small',
+                    'description': 'Flavor to use for server server_0',
+                    'type': 'string'
+                },
+                'server_0_image': {
+                    'description': 'Image to use to boot server server_0',
+                    'default': '3333',
+                    'type': 'string'
+                },
+                'server_0_default_security_group': {
+                    'default': '1',
+                    'type': 'string',
+                    'description': 'Default security group for server server1'
+                }
+            },
+            'resources': {
+                'server_0': {
+                    'type': 'OS::Nova::Server',
+                    'properties': {
+                        'name': 'server1',
+                        'diskConfig': 'MANUAL',
+                        'security_groups': [
+                            {
+                                'get_param': 'server_0_default_security_group'
+                            }
+                        ],
+                        'flavor': {'get_param': 'server_0_flavor'},
+                        'image': {'get_param': 'server_0_image'}
+                    }
+                }
+            }
+        }
+        generator.extract_servers()
+        self.assertEqual(expected, generator.stack_data)
+        self.assertEqual(template_expected, generator.template)
 
 
 class NetworkTests(unittest.TestCase):

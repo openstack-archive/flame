@@ -75,7 +75,8 @@ class TemplateGenerator(object):
             return dict((element.id, (index, element))
                         for index, element in enumerate(data))
 
-    def print_generated(self, file):
+    def print_generated(self, file, message):
+        print("########## %s ##########" % message)
         print(yaml.safe_dump(file, default_flow_style=False))
 
     def add_resource(self, name, status, resource_id, resource_type):
@@ -547,10 +548,10 @@ class TemplateGenerator(object):
         if not self.exclude_volumes:
             self.extract_volumes()
 
-        self.print_generated(self.template)
+        self.print_generated(self.template, "Heat Template")
 
         if self.generate_data:
-            self.print_generated(self.stack_data)
+            self.print_generated(self.stack_data, "Heat Stack Data")
 
 
 def main():
