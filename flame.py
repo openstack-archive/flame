@@ -259,6 +259,8 @@ class TemplateGenerator(object):
     def _build_rules(self, rules):
         brules = []
         for rule in rules:
+            if rule['protocol'] == 'any':
+                del rule['protocol']
             rg_id = rule['remote_group_id']
             if rg_id is not None:
                 rule['remote_mode'] = "remote_group_id"
