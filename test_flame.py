@@ -71,6 +71,9 @@ class FakeNeutronManager(object):
     def network_list(self):
         return self.networks
 
+    def port_list(self):
+        return self.ports
+
     def router_list(self):
         return self.routers
 
@@ -386,7 +389,7 @@ class StackDataTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.floatingips = [ip]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = flame.TemplateGenerator(True, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -877,7 +880,7 @@ class NetworkTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.floatingips = [ip]
-        generator = flame.TemplateGenerator([], [], [])
+        generator = flame.TemplateGenerator(True, [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -900,6 +903,8 @@ class NetworkTests(unittest.TestCase):
             }
         }
         generator.extract_floating()
+        print  expected
+        print generator.template
         self.assertEqual(expected, generator.template)
 
     def test_security_group(self):

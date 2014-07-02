@@ -48,6 +48,7 @@ class TemplateGenerator(object):
         self.routers = self.neutron.router_list()
         self.secgroups = self.build_data(self.neutron.secgroup_list())
         self.floatingips = self.neutron.floatingip_list()
+        self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
 
         self.nova = self.nova_manager(*arguments)
@@ -401,9 +402,8 @@ class TemplateGenerator(object):
                 properties['image'] = {'get_param': image_parameter_name}
 
             # Keypair
-            if server.key_name:
-                key = self.keys[server.key_name]
-                resource_key = "key_%d" % key[0]
+            if server.key_name and server.key_name in self.keys:
+                resource_key = "key_%d" % self.keys[server.key_name][0]
                 properties['key_name'] = {'get_resource': resource_key}
 
             security_groups = self.build_secgroups(server)
@@ -460,7 +460,7 @@ class TemplateGenerator(object):
                                   ip['id'],
                                   resource_type)
 
-            resource = {
+            floating_resource = {
                 ip_resource_name: {
                     'type': resource_type,
                     'properties': {
@@ -473,7 +473,28 @@ class TemplateGenerator(object):
             default = ip['floating_network_id']
             self.add_parameter(net_param_name, description, 'string',
                                constraints=constraints, default=default)
-            self.template['resources'].update(resource)
+            if not self.exclude_servers and ip['port_id']:
+                device = self.ports[ip['port_id']][1]['device_id']
+                if device and self.servers[device]:
+                    server = self.servers[device]
+                    resource_name = "floatingip_association_%d" % n
+                    server_resource_name = "server_%d" % server[0]
+                    resource_type = 'OS::Nova::FloatingIPAssociation'
+                    resource = {
+                        resource_name: {
+                            'type': resource_type,
+                            'properties': {
+                                'floating_ip': {
+                                    'get_resource': ip_resource_name
+                                },
+                                'server_id': {
+                                    'get_resource': server_resource_name
+                                }
+                            }
+                        }
+                    }
+                    self.template['resources'].update(resource)
+            self.template['resources'].update(floating_resource)
 
     def extract_volumes(self):
         for n, volume in self.volumes.itervalues():
