@@ -1,7 +1,31 @@
-import datetime
-import unittest
+# -*- coding: utf-8 -*-
 
-import flame
+# This software is released under the MIT License.
+#
+# Copyright (c) 2014 Cloudwatt
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+import datetime
+
+from flameclient.flame import TemplateGenerator  # noqa
+from flameclient.tests import base
 
 
 class FakeBase(object):
@@ -115,20 +139,18 @@ class FakeCinderManager(object):
         return self.volumes
 
 
-class StackDataTests(unittest.TestCase):
+class StackDataTests(base.TestCase):
     def setUp(self):
+        super(StackDataTests, self).setUp()
         self.neutron_manager = FakeNeutronManager()
-        flame.TemplateGenerator.neutron_manager = (
-            lambda x: self.neutron_manager)
+        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
         self.nova_manager = FakeNovaManager()
-        flame.TemplateGenerator.nova_manager = (
-            lambda x: self.nova_manager)
+        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
         self.cinder_manager = FakeCinderManager()
-        flame.TemplateGenerator.cinder_manager = (
-            lambda x: self.cinder_manager)
+        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
 
     def test_keypair(self):
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -155,7 +177,7 @@ class StackDataTests(unittest.TestCase):
             'external_gateway_info': None
         }
         self.neutron_manager.routers = [router]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -185,7 +207,7 @@ class StackDataTests(unittest.TestCase):
             }
         }
         self.neutron_manager.routers = [router]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -254,7 +276,7 @@ class StackDataTests(unittest.TestCase):
         self.neutron_manager.subnets = [subnet]
         self.neutron_manager.routers = [router]
 
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -293,7 +315,7 @@ class StackDataTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.networks = [network]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -323,7 +345,7 @@ class StackDataTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.networks = [network]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -358,7 +380,7 @@ class StackDataTests(unittest.TestCase):
         self.neutron_manager.networks = [network]
         self.neutron_manager.subnets = [subnet]
 
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -389,7 +411,7 @@ class StackDataTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.floatingips = [ip]
-        generator = flame.TemplateGenerator(True, False, True)
+        generator = TemplateGenerator(True, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -433,7 +455,7 @@ class StackDataTests(unittest.TestCase):
         }
 
         self.neutron_manager.groups = [group]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -476,7 +498,7 @@ class StackDataTests(unittest.TestCase):
         }
 
         self.neutron_manager.groups = [group]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -487,7 +509,7 @@ class StackDataTests(unittest.TestCase):
 
     def test_volume(self):
         self.cinder_manager.volumes = [FakeVolume()]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -509,7 +531,7 @@ class StackDataTests(unittest.TestCase):
 
     def test_server(self):
         self.nova_manager.servers = [FakeServer()]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -541,7 +563,7 @@ class StackDataTests(unittest.TestCase):
         self.nova_manager.groups = {'server1': [FakeSecurityGroup(
             name='default', description='default')]}
         self.nova_manager.servers = [FakeServer()]
-        generator = flame.TemplateGenerator(False, False, True)
+        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -600,21 +622,19 @@ class StackDataTests(unittest.TestCase):
         self.assertEqual(template_expected, generator.template)
 
 
-class NetworkTests(unittest.TestCase):
+class NetworkTests(base.TestCase):
 
     def setUp(self):
+        super(NetworkTests, self).setUp()
         self.neutron_manager = FakeNeutronManager()
-        flame.TemplateGenerator.neutron_manager = (
-            lambda x: self.neutron_manager)
+        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
         self.nova_manager = FakeNovaManager()
-        flame.TemplateGenerator.nova_manager = (
-            lambda x: self.nova_manager)
+        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
         self.cinder_manager = FakeCinderManager()
-        flame.TemplateGenerator.cinder_manager = (
-            lambda x: self.cinder_manager)
+        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
 
     def test_keypair(self):
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -640,7 +660,7 @@ class NetworkTests(unittest.TestCase):
             'external_gateway_info': None
         }
         self.neutron_manager.routers = [router]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -669,7 +689,7 @@ class NetworkTests(unittest.TestCase):
             }
         }
         self.neutron_manager.routers = [router]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -742,7 +762,7 @@ class NetworkTests(unittest.TestCase):
         self.neutron_manager.subnets = [subnet]
         self.neutron_manager.routers = [router]
 
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -778,7 +798,7 @@ class NetworkTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.networks = [network]
-        generator = flame.TemplateGenerator([], [], [])
+        generator = TemplateGenerator([], [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -808,7 +828,7 @@ class NetworkTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.networks = [network]
-        generator = flame.TemplateGenerator([], [], [])
+        generator = TemplateGenerator([], [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -844,7 +864,7 @@ class NetworkTests(unittest.TestCase):
         self.neutron_manager.networks = [network]
         self.neutron_manager.subnets = [subnet]
 
-        generator = flame.TemplateGenerator([], [], [])
+        generator = TemplateGenerator([], [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -880,7 +900,7 @@ class NetworkTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.floatingips = [ip]
-        generator = flame.TemplateGenerator(True, [], [])
+        generator = TemplateGenerator(True, [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -903,8 +923,6 @@ class NetworkTests(unittest.TestCase):
             }
         }
         generator.extract_floating()
-        print  expected
-        print generator.template
         self.assertEqual(expected, generator.template)
 
     def test_security_group(self):
@@ -967,7 +985,7 @@ class NetworkTests(unittest.TestCase):
         }
 
         self.neutron_manager.groups = [group]
-        generator = flame.TemplateGenerator([], [], [])
+        generator = TemplateGenerator([], [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1083,7 +1101,7 @@ class NetworkTests(unittest.TestCase):
         }
 
         self.neutron_manager.groups = [group]
-        generator = flame.TemplateGenerator([], [], [])
+        generator = TemplateGenerator([], [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1246,7 +1264,7 @@ class NetworkTests(unittest.TestCase):
             'id': '2222'
         }
         self.neutron_manager.groups = [group1, group2]
-        generator = flame.TemplateGenerator([], [], [])
+        generator = TemplateGenerator([], [], [])
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1331,22 +1349,20 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(expected, generator.template)
 
 
-class VolumeTests(unittest.TestCase):
+class VolumeTests(base.TestCase):
 
     def setUp(self):
+        super(VolumeTests, self).setUp()
         self.neutron_manager = FakeNeutronManager()
-        flame.TemplateGenerator.neutron_manager = (
-            lambda x: self.neutron_manager)
+        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
         self.nova_manager = FakeNovaManager()
-        flame.TemplateGenerator.nova_manager = (
-            lambda x: self.nova_manager)
+        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
         self.cinder_manager = FakeCinderManager()
-        flame.TemplateGenerator.cinder_manager = (
-            lambda x: self.cinder_manager)
+        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
 
     def test_basic(self):
         self.cinder_manager.volumes = [FakeVolume()]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1367,7 +1383,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_source_volid_external(self):
         self.cinder_manager.volumes = [FakeVolume(source_volid=5678)]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1395,7 +1411,7 @@ class VolumeTests(unittest.TestCase):
     def test_source_volid_included(self):
         self.cinder_manager.volumes = [
             FakeVolume(source_volid=5678), FakeVolume(id=5678)]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1439,7 +1455,7 @@ class VolumeTests(unittest.TestCase):
         self.cinder_manager.volumes = [
             FakeVolume(bootable='true', volume_image_metadata=metadata)
         ]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1467,7 +1483,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_snapshot_id(self):
         self.cinder_manager.volumes = [FakeVolume(snapshot_id=5678)]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1495,7 +1511,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_volume_type(self):
         self.cinder_manager.volumes = [FakeVolume(volume_type='isci')]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1523,7 +1539,7 @@ class VolumeTests(unittest.TestCase):
 
     def test_metadata(self):
         self.cinder_manager.volumes = [FakeVolume(metadata={'key': 'value'})]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1544,22 +1560,20 @@ class VolumeTests(unittest.TestCase):
         self.assertEqual(expected, generator.template)
 
 
-class ServerTests(unittest.TestCase):
+class ServerTests(base.TestCase):
 
     def setUp(self):
+        super(ServerTests, self).setUp()
         self.neutron_manager = FakeNeutronManager()
-        flame.TemplateGenerator.neutron_manager = (
-            lambda x: self.neutron_manager)
+        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
         self.nova_manager = FakeNovaManager()
-        flame.TemplateGenerator.nova_manager = (
-            lambda x: self.nova_manager)
+        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
         self.cinder_manager = FakeCinderManager()
-        flame.TemplateGenerator.cinder_manager = (
-            lambda x: self.cinder_manager)
+        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
 
     def test_basic(self):
         self.nova_manager.servers = [FakeServer()]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1592,7 +1606,7 @@ class ServerTests(unittest.TestCase):
 
     def test_keypair(self):
         self.nova_manager.servers = [FakeServer(key_name='testkey')]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1640,7 +1654,7 @@ class ServerTests(unittest.TestCase):
         }
         server = FakeServer(**servers_args)
         self.nova_manager.servers = [server]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1681,7 +1695,7 @@ class ServerTests(unittest.TestCase):
             "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         server = FakeServer(**server_args)
         self.nova_manager.servers = [server]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1722,7 +1736,7 @@ class ServerTests(unittest.TestCase):
         ]
         self.nova_manager.groups = {'server1': [FakeSecurityGroup()]}
         self.nova_manager.servers = [FakeServer()]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1769,7 +1783,7 @@ class ServerTests(unittest.TestCase):
 
     def test_config_drive(self):
         self.nova_manager.servers = [FakeServer(config_drive="True")]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1803,7 +1817,7 @@ class ServerTests(unittest.TestCase):
 
     def test_metadata(self):
         self.nova_manager.servers = [FakeServer(metadata={"key": "value"})]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1853,7 +1867,7 @@ class ServerTests(unittest.TestCase):
         self.neutron_manager.networks = [network]
         addresses = {"private": [{"addr": "10.0.0.2"}]}
         self.nova_manager.servers = [FakeServer(addresses=addresses)]
-        generator = flame.TemplateGenerator(False, False, False)
+        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1900,7 +1914,7 @@ class ServerTests(unittest.TestCase):
             "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         server = FakeServer(**server_args)
         self.nova_manager.servers = [server]
-        generator = flame.TemplateGenerator(False, True, False)
+        generator = TemplateGenerator(False, True, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
