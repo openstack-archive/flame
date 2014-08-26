@@ -1,10 +1,35 @@
-import argparse
-import ipaddr
+# -*- coding: utf-8 -*-
+
+# This software is released under the MIT License.
+#
+# Copyright (c) 2014 Cloudwatt
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import logging
-import os
+
+import ipaddr
 import yaml
 
-import managers
+from flameclient import managers
+
+
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -103,15 +128,15 @@ class TemplateGenerator(object):
             }
         }
         # (arezmerita) disable cause heat bug #1314240
-        #if constraints:
+        # if constraints:
         #    parameter[name]['constraints'] = constraints
         if default:
             parameter[name]['default'] = default
         self.template['parameters'].update(parameter)
 
     def add_router_gateway_resource(self, router_resource_name, router):
-        router_external_network_name = "%s_external_network" % \
-                                       router_resource_name
+        router_external_network_name = ("%s_external_network" %
+                                        router_resource_name)
         router_gateway_name = "%s_gateway" % router_resource_name
         resource_type = 'OS::Neutron::RouterGateway'
         description = "Router external network"
@@ -142,16 +167,16 @@ class TemplateGenerator(object):
     def add_router_interface_resources(self, router_resource_name, ports):
         for n, port in enumerate(ports):
             if port['device_owner'] == "network:router_interface":
-                port_resource_name = "%s_interface_%d" % \
-                                     (router_resource_name, n)
+                port_resource_name = ("%s_interface_%d" %
+                                      (router_resource_name, n))
                 resource_type = 'OS::Neutron::RouterInterface'
                 subnet_resource_name = self.get_subnet_resource_name(
                     port['fixed_ips'][0]['subnet_id'])
 
                 if self.generate_data:
-                    resource_id = "%s:subnet_id=%s" % \
-                                  (port['device_id'],
-                                   port['fixed_ips'][0]['subnet_id'])
+                    resource_id = ("%s:subnet_id=%s" %
+                                   (port['device_id'],
+                                    port['fixed_ips'][0]['subnet_id']))
                     self.add_resource(port_resource_name, 'COMPLETE',
                                       resource_id, resource_type)
 
@@ -159,8 +184,8 @@ class TemplateGenerator(object):
                     port_resource_name: {
                         'type': resource_type,
                         'properties': {
-                        'subnet_id': {'get_resource': subnet_resource_name},
-                        'router_id': {'get_resource': router_resource_name}
+                            'subnet_id': {'get_resource': subnet_resource_name},
+                            'router_id': {'get_resource': router_resource_name}
                         }
                     }
                 }
@@ -337,16 +362,16 @@ class TemplateGenerator(object):
                 if not secgroup_default_parameter:
                     server_res_name = 'server_%d' % self.servers[server.id][0]
                     param_name = "%s_default_security_group" % server_res_name
-                    description = "Default security group for server %s" % \
-                                  server.name
+                    description = ("Default security group for server %s" %
+                                   server.name)
                     default = secgr.id
                     self.add_parameter(param_name, description,
                                        'string', default=default)
                     secgroup_default_parameter = {'get_param': param_name}
                 security_groups.append(secgroup_default_parameter)
             else:
-                resource_name = "security_group_%d" % \
-                                self.secgroups[secgr.id][0]
+                resource_name = ("security_group_%d" %
+                                 self.secgroups[secgr.id][0])
                 security_groups.append({'get_resource': resource_name})
 
         return security_groups
@@ -430,10 +455,10 @@ class TemplateGenerator(object):
                         {'volume_id': {'get_resource': volume_resource_name},
                          'device_name': device})
                 else:
-                    volume_parameter_name = "volume_%s_%d" % \
-                                            (server.name, volume[0])
-                    description = "Volume for server %s, device %s" % \
-                                  (server.name, device)
+                    volume_parameter_name = ("volume_%s_%d" %
+                                             (server.name, volume[0]))
+                    description = ("Volume for server %s, device %s" %
+                                   (server.name, device))
                     server_volumes.append(
                         {'volume_id': {'get_param': volume_parameter_name},
                          'device_name': device})
@@ -575,51 +600,3 @@ class TemplateGenerator(object):
 
         if self.generate_data:
             self.print_generated(self.stack_data, "Heat Stack Data")
-
-
-def main():
-    desc = "Heat template and data file generator"
-    parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument("--username", type=str,
-                        default=os.environ.get("OS_USERNAME"),
-                        help="A user name with access to the project. "
-                             "Defaults to env[OS_USERNAME]")
-    parser.add_argument("--password", type=str,
-                        default=os.environ.get("OS_PASSWORD"),
-                        help="The user's password. "
-                             "Defaults to env[OS_PASSWORD]")
-    parser.add_argument("--project", type=str,
-                        default=os.environ.get("OS_TENANT_NAME"),
-                        help="Name of project. "
-                             "Defaults to env[OS_TENANT_NAME]")
-    parser.add_argument("--auth_url", type=str,
-                        default=os.environ.get("OS_AUTH_URL"),
-                        help="Authentication URL. "
-                             "Defaults to env[OS_AUTH_URL].")
-    parser.add_argument('--insecure', action='store_true', default=False,
-                        help="Explicitly allow clients to perform"
-                             "\"insecure\" SSL (https) requests. The "
-                             "server's certificate will not be verified "
-                             "against any certificate authorities. This "
-                             "option should be used with caution.")
-    parser.add_argument('--exclude-servers', action='store_true',
-                        default=False,
-                        help="Do not export in template server resources")
-    parser.add_argument('--exclude-volumes', action='store_true',
-                        default=False,
-                        help="Do not export in template volume resources")
-    parser.add_argument('--generate-stack-data', action='store_true',
-                        default=False,
-                        help="In addition to template, generate Heat "
-                             "stack data file.")
-
-    args = parser.parse_args()
-    arguments = (args.username, args.password, args.project, args.auth_url,
-                 args.insecure)
-    TemplateGenerator(args.exclude_servers,
-                      args.exclude_volumes,
-                      args.generate_stack_data,
-                      *arguments).run()
-
-if __name__ == "__main__":
-    main()
