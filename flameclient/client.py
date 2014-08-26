@@ -23,5 +23,5 @@
 # SOFTWARE.
 
 def template_configuration(allow_insecure=False, exclude_servers=False,
-                           exclude_volumes=False, generate_stack_data=False)
+                           exclude_volumes=False, generate_stack_data=False):
     raise NotImplementedError()
