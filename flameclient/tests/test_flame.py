@@ -166,7 +166,7 @@ class StackDataTests(base.TestCase):
                 }
             }
         }
-        generator.extract_keys()
+        generator._extract_keys()
         self.assertEqual(expected, generator.stack_data)
 
     def test_router(self):
@@ -193,7 +193,7 @@ class StackDataTests(base.TestCase):
                 }
             }
         }
-        generator.extract_routers()
+        generator._extract_routers()
         self.assertEqual(expected, generator.stack_data)
 
     def test_router_with_external_gateway(self):
@@ -233,7 +233,7 @@ class StackDataTests(base.TestCase):
             }
         }
 
-        generator.extract_routers()
+        generator._extract_routers()
         self.assertEqual(expected, generator.stack_data)
 
     def test_router_with_ports(self):
@@ -301,7 +301,7 @@ class StackDataTests(base.TestCase):
                 }
             }
         }
-        generator.extract_routers()
+        generator._extract_routers()
         self.assertEqual(expected, generator.stack_data)
 
     def test_network(self):
@@ -331,7 +331,7 @@ class StackDataTests(base.TestCase):
                 }
             }
         }
-        generator.extract_networks()
+        generator._extract_networks()
         self.assertEqual(expected, generator.stack_data)
 
     def test_external_network(self):
@@ -351,7 +351,7 @@ class StackDataTests(base.TestCase):
             'status': 'COMPLETE',
             'resources': {}
         }
-        generator.extract_networks()
+        generator._extract_networks()
         self.assertEqual(expected, generator.stack_data)
 
     def test_subnet(self):
@@ -397,7 +397,7 @@ class StackDataTests(base.TestCase):
             }
 
         }
-        generator.extract_subnets()
+        generator._extract_subnets()
         self.assertEqual(expected, generator.stack_data)
 
     def test_floatingip(self):
@@ -428,7 +428,7 @@ class StackDataTests(base.TestCase):
             }
 
         }
-        generator.extract_floating()
+        generator._extract_floating()
         self.assertEqual(expected, generator.stack_data)
 
     def test_security_group(self):
@@ -471,7 +471,7 @@ class StackDataTests(base.TestCase):
                 }
             }
         }
-        generator.extract_secgroups()
+        generator._extract_secgroups()
         self.assertEqual(expected, generator.stack_data)
 
     def test_default_security_group(self):
@@ -504,7 +504,7 @@ class StackDataTests(base.TestCase):
             'status': 'COMPLETE',
             'resources': {}
         }
-        generator.extract_secgroups()
+        generator._extract_secgroups()
         self.assertEqual(expected, generator.stack_data)
 
     def test_volume(self):
@@ -526,7 +526,7 @@ class StackDataTests(base.TestCase):
             }
 
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.stack_data)
 
     def test_server(self):
@@ -548,7 +548,7 @@ class StackDataTests(base.TestCase):
             }
 
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.stack_data)
 
     def test_server_with_default_security_group(self):
@@ -617,7 +617,7 @@ class StackDataTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.stack_data)
         self.assertEqual(template_expected, generator.template)
 
@@ -649,7 +649,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_keys()
+        generator._extract_keys()
         self.assertEqual(expected, generator.template)
 
     def test_router(self):
@@ -675,7 +675,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_routers()
+        generator._extract_routers()
         self.assertEqual(expected, generator.template)
 
     def test_router_with_external_gateway(self):
@@ -719,7 +719,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_routers()
+        generator._extract_routers()
         self.assertEqual(expected, generator.template)
 
     def test_router_with_ports(self):
@@ -784,7 +784,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_routers()
+        generator._extract_routers()
         self.assertEqual(expected, generator.template)
 
     def test_network(self):
@@ -814,7 +814,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_networks()
+        generator._extract_networks()
         self.assertEqual(expected, generator.template)
 
     def test_external_network(self):
@@ -835,7 +835,7 @@ class NetworkTests(base.TestCase):
             'parameters': {},
             'resources': {}
         }
-        generator.extract_networks()
+        generator._extract_networks()
         self.assertEqual(expected, generator.template)
 
     def test_subnet(self):
@@ -886,7 +886,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_subnets()
+        generator._extract_subnets()
         self.assertEqual(expected, generator.template)
 
     def test_floatingip(self):
@@ -922,7 +922,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_floating()
+        generator._extract_floating()
         self.assertEqual(expected, generator.template)
 
     def test_security_group(self):
@@ -1026,7 +1026,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_secgroups()
+        generator._extract_secgroups()
         self.assertEqual(expected, generator.template)
 
     def test_security_group_default(self):
@@ -1144,7 +1144,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_secgroups()
+        generator._extract_secgroups()
         self.assertEqual(expected, generator.template)
 
     def test_security_groups(self):
@@ -1345,7 +1345,7 @@ class NetworkTests(base.TestCase):
                 }
             }
         }
-        generator.extract_secgroups()
+        generator._extract_secgroups()
         self.assertEqual(expected, generator.template)
 
 
@@ -1378,7 +1378,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
     def test_source_volid_external(self):
@@ -1405,7 +1405,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
     def test_source_volid_included(self):
@@ -1436,7 +1436,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
     def test_image(self):
@@ -1478,7 +1478,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
     def test_snapshot_id(self):
@@ -1506,7 +1506,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
     def test_volume_type(self):
@@ -1534,7 +1534,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
     def test_metadata(self):
@@ -1556,7 +1556,7 @@ class VolumeTests(base.TestCase):
                 }
             }
         }
-        generator.extract_volumes()
+        generator._extract_volumes()
         self.assertEqual(expected, generator.template)
 
 
@@ -1601,7 +1601,7 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_keypair(self):
@@ -1635,7 +1635,7 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_boot_from_volume(self):
@@ -1678,7 +1678,7 @@ class ServerTests(base.TestCase):
                 },
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_volume_attached(self):
@@ -1726,7 +1726,7 @@ class ServerTests(base.TestCase):
                 },
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_security_groups(self):
@@ -1777,8 +1777,8 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_secgroups()
-        generator.extract_servers()
+        generator._extract_secgroups()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_config_drive(self):
@@ -1812,7 +1812,7 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_metadata(self):
@@ -1846,7 +1846,7 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_networks(self):
@@ -1897,7 +1897,7 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)
 
     def test_excluded_volume_attached(self):
@@ -1951,5 +1951,5 @@ class ServerTests(base.TestCase):
                 }
             }
         }
-        generator.extract_servers()
+        generator._extract_servers()
         self.assertEqual(expected, generator.template)

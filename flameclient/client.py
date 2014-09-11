@@ -22,6 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-def template_configuration(allow_insecure=False, exclude_servers=False,
-                           exclude_volumes=False, generate_stack_data=False):
-    raise NotImplementedError()
+from flameclient.flame import TemplateGenerator
+
+
+class Client(object):
+    def __init__(self, version, **kwargs):
+
+        username = kwargs.get('username')
+        password = kwargs.get('password')
+        tenant_name = kwargs.get('tenant_name')
+        auth_url = kwargs.get('auth_url')
+
+        insecure = kwargs.get('insecure')
+        self.template_factory = TemplateGenerator(username, password,
+                                                  tenant_name, auth_url,
+                                                  insecure)

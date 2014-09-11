@@ -28,7 +28,7 @@ import os
 from flame import TemplateGenerator
 
 
-def main():
+def main(args=None):
     desc = "Heat template and data file generator"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument("--username", type=str,
