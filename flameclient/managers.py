@@ -30,6 +30,7 @@ from novaclient.v1_1 import client as nova_client
 
 class KeystoneManager(object):
     """Manages Keystone queries."""
+    client = None
 
     def __init__(self, username, password, project, auth_url, insecure):
         self.client = keystone_client.Client(

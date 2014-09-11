@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import print_function
+
 import argparse
 import os
 
@@ -65,9 +67,13 @@ def main(args=None):
                              "stack data file.")
 
     args = parser.parse_args()
-    arguments = (args.username, args.password, args.project, args.auth_url,
-                 args.insecure)
-    TemplateGenerator(args.exclude_servers,
-                      args.exclude_volumes,
-                      args.generate_stack_data,
-                      *arguments).run()
+    template = TemplateGenerator(args.username, args.password, args.project,
+                                 args.auth_url, args.insecure)
+    template.extract_server_details(args.exclude_servers, args.exclude_volumes,
+                                    args.generate_stack_data)
+    template.extract_data()
+    print("### Heat Template ###")
+    print(template.heat_template())
+    if args.generate_stack_data:
+        print("### Stack Data ###")
+        print(template.stack_data())

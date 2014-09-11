@@ -23,7 +23,6 @@
 # SOFTWARE.
 
 import logging
-import sys
 
 import ipaddr
 import yaml
@@ -48,15 +47,38 @@ resources:
 
 
 class TemplateGenerator(object):
-
-    neutron_manager = managers.NeutronManager
-    nova_manager = managers.NovaManager
-    cinder_manager = managers.CinderManager
     template = None
     stack_data = None
 
-    def _setup_managers(self, arguments):
-        self.neutron = self.neutron_manager(*arguments)
+    def __init__(self, username, password, tenant_name, auth_url, insecure):
+        self.generate_data = False
+        self._setup_templates()
+        self._setup_managers(username, password, tenant_name, auth_url,
+                             insecure)
+
+    def _setup_templates(self):
+        self.template = yaml.load(template_skeleton)
+        self.template['resources'] = {}
+        self.template['parameters'] = {}
+
+        self.stack_data = yaml.load(stack_data_skeleton)
+        self.stack_data['resources'] = {}
+
+    def _setup_managers(self, username, password, tenant_name, auth_url,
+                        insecure):
+        self.neutron = managers.NeutronManager(username, password, tenant_name,
+                                               auth_url, insecure)
+        self.nova = managers.NovaManager(username, password, tenant_name,
+                                         auth_url, insecure)
+        self.cinder = managers.CinderManager(username, password, tenant_name,
+                                             auth_url, insecure)
+
+    def extract_vm_details(self, exclude_servers, exclude_volumes,
+                           generate_data):
+        self.exclude_servers = exclude_servers
+        self.exclude_volumes = exclude_volumes
+        self.generate_data = generate_data
+
         self.subnets = self.build_data(self.neutron.subnet_list())
         self.networks = self.build_data(self.neutron.network_list())
         self.routers = self.neutron.router_list()
@@ -65,38 +87,19 @@ class TemplateGenerator(object):
         self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
 
-        self.nova = self.nova_manager(*arguments)
-        self.keys = dict((key.name, (index, key)) for index, key
-                         in enumerate(self.nova.keypair_list()))
+        self.keys = dict(
+            (key.name, (index, key))
+            for index, key in enumerate(self.nova.keypair_list()))
 
-        if not self.exclude_servers:
+        if not exclude_servers:
             self.flavors = self.build_data(self.nova.flavor_list())
             self.servers = self.build_data(self.nova.server_list())
 
-        if (not self.exclude_volumes or
-                (self.exclude_volumes and not self.exclude_servers)):
-            self.cinder = self.cinder_manager(*arguments)
+        if (not exclude_volumes or
+                (exclude_volumes and not exclude_servers)):
             self.volumes = self.build_data(self.cinder.volume_list())
 
-    def setup_templates(self):
-        self.template = yaml.load(template_skeleton)
-        self.template['resources'] = {}
-        self.template['parameters'] = {}
-        if self.generate_data:
-            self.stack_data = yaml.load(stack_data_skeleton)
-            self.stack_data['resources'] = {}
-
-    def __init__(self, exclude_servers, exclude_volumes,
-                 generate_data, *arguments):
-        self.exclude_servers = exclude_servers
-        self.exclude_volumes = exclude_volumes
-        self.generate_data = generate_data
-
-        self.setup_templates()
-        self._setup_managers(arguments)
-
-    @staticmethod
-    def build_data(data):
+    def build_data(self, data):
         if not data:
             return {}
 
@@ -600,9 +603,8 @@ class TemplateGenerator(object):
         if not self.exclude_volumes:
             self._extract_volumes()
 
-    def run(self):
-        self.extract_data()
-        self.print_generated(self.template, "Heat Template")
+    def heat_template(self):
+        return self.print_generated(self.template)
 
-        if self.generate_data:
-            self.print_generated(self.stack_data, "Heat Stack Data")
+    def stack_data(self):
+        return self.print_generated(self.stack_data)

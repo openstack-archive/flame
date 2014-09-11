@@ -22,11 +22,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from flameclient.flame import TemplateGenerator
+from flameclient.flame import TemplateGenerator  # noqa
 
 
 class Client(object):
-    def __init__(self, version, **kwargs):
+    def __init__(self, api_version, **kwargs):
 
         username = kwargs.get('username')
         password = kwargs.get('password')
@@ -34,6 +34,11 @@ class Client(object):
         auth_url = kwargs.get('auth_url')
 
         insecure = kwargs.get('insecure')
-        self.template_factory = TemplateGenerator(username, password,
-                                                  tenant_name, auth_url,
-                                                  insecure)
+        self.template_generator = TemplateGenerator(username, password,
+                                                    tenant_name, auth_url,
+                                                    insecure)
+
+    def generate(self, include_networks, include_instances, include_volumes):
+        return self.template_generator.generate(include_networks,
+                                                include_instances,
+                                                include_volumes)

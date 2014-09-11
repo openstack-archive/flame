@@ -24,6 +24,9 @@
 
 import datetime
 
+import mock
+
+import flameclient
 from flameclient.flame import TemplateGenerator  # noqa
 from flameclient.tests import base
 
@@ -83,10 +86,19 @@ class FakeSecurityGroup(FakeBase):
 
 class FakeNeutronManager(object):
     groups = []
-    routers = []
+    routers =  [{'name': 'myrouter',
+                 'id': '1234',
+                 'admin_state_up': 'true',
+                 'external_gateway_info': None}, ]
     ports = []
     subnets = []
-    networks = []
+    networks = [{'status': 'ACTIVE',
+                 'subnets': ['1111'],
+                 'name': 'mynetwork',
+                 'router:external': False,
+                 'admin_state_up': True,
+                 'shared': False,
+                 'id': '2222'}, ]
     floatingips = []
 
     def subnet_list(self):
@@ -113,7 +125,7 @@ class FakeNeutronManager(object):
 
 class FakeNovaManager(object):
 
-    servers = []
+    servers = [FakeServer()]
     flavors = [FakeFlavor(id='2', name='m1.small')]
     groups = {}
     keypairs = [FakeKeypair(name='testkey', public_key='ssh-rsa XXXX')]
@@ -133,7 +145,7 @@ class FakeNovaManager(object):
 
 class FakeCinderManager(object):
 
-    volumes = []
+    volumes = [FakeVolume(), ]
 
     def volume_list(self):
         return self.volumes
@@ -142,15 +154,24 @@ class FakeCinderManager(object):
 class StackDataTests(base.TestCase):
     def setUp(self):
         super(StackDataTests, self).setUp()
-        self.neutron_manager = FakeNeutronManager()
-        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
-        self.nova_manager = FakeNovaManager()
-        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
-        self.cinder_manager = FakeCinderManager()
-        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
+        self.patch_neutron = mock.patch('flameclient.managers.NeutronManager')
+        self.mock_neutron = self.patch_neutron.start()
+        self.patch_nova = mock.patch('flameclient.managers.NovaManager')
+        self.mock_nova = self.patch_nova.start()
+        self.patch_cinder = mock.patch('flameclient.managers.CinderManager')
+        self.mock_cinder = self.patch_cinder.start()
+
+    def tearDown(self):
+        super(StackDataTests, self).tearDown()
+        self.mock_neutron.stop()
+        self.mock_nova.stop()
+        self.mock_cinder.stop()
 
     def test_keypair(self):
-        generator = TemplateGenerator(False, False, True)
+        self.mock_nova.return_value = FakeNovaManager()
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -170,14 +191,10 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_router(self):
-        router = {
-            'name': 'myrouter',
-            'id': '1234',
-            'admin_state_up': 'true',
-            'external_gateway_info': None
-        }
-        self.neutron_manager.routers = [router]
-        generator = TemplateGenerator(False, False, True)
+        self.mock_neutron.return_value = FakeNeutronManager()
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -197,17 +214,17 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_router_with_external_gateway(self):
-        router = {
-            'name': 'myrouter',
-            'id': '1234',
-            'admin_state_up': 'true',
-            'external_gateway_info': {
-                'network_id': '8765',
-                'enable_snat': 'true'
-            }
-        }
-        self.neutron_manager.routers = [router]
-        generator = TemplateGenerator(False, False, True)
+        fake = FakeNeutronManager()
+        fake.routers = [{'name': 'myrouter',
+                         'id': '1234',
+                         'admin_state_up': 'true',
+                         'external_gateway_info': {
+                             'network_id': '8765',
+                             'enable_snat': 'true'}}, ]
+        self.mock_neutron.return_value = fake
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -237,46 +254,37 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_router_with_ports(self):
-        router = {
-            'name': 'myrouter',
-            'id': '1234',
-            'admin_state_up': 'true',
-            'external_gateway_info': None
-        }
-        port = {
-            'status': 'ACTIVE',
-            'name': '',
-            'allowed_address_pairs': [],
-            'admin_state_up': True,
-            'network_id': '4444',
-            'extra_dhcp_opts': [],
-            'binding:vnic_type': 'normal',
-            'device_owner': 'network:router_interface',
-            'mac_address': 'fa:16:3e:4b:8c:98',
-            'fixed_ips': [{'subnet_id': '1111', 'ip_address': '10.123.2.3'}],
-            'id': '1234567',
-            'security_groups': [],
-            'device_id': '1234'
-        }
-        subnet = {
-            'name': 'subnet_1111',
-            'enable_dhcp': True,
-            'network_id': '1234',
-            'dns_nameservers': [],
-            'allocation_pools': [{'start': '10.123.2.2',
-                                  'end': '10.123.2.30'}],
-            'host_routes': [],
-            'ip_version': 4,
-            'gateway_ip': '10.123.2.1',
-            'cidr': '10.123.2.0/27',
-            'id': '1111'
-        }
+        fake = FakeNeutronManager()
+        fake.ports = [{'status': 'ACTIVE',
+                       'name': '',
+                       'allowed_address_pairs': [],
+                       'admin_state_up': True,
+                       'network_id': '4444',
+                       'extra_dhcp_opts': [],
+                       'binding:vnic_type': 'normal',
+                       'device_owner': 'network:router_interface',
+                       'mac_address': 'fa:16:3e:4b:8c:98',
+                       'fixed_ips': [{'subnet_id': '1111',
+                                      'ip_address': '10.123.2.3'}],
+                        'id': '1234567',
+                        'security_groups': [],
+                        'device_id': '1234'}, ]
+        fake.subnets = [{'name': 'subnet_1111',
+                         'enable_dhcp': True,
+                         'network_id': '1234',
+                         'dns_nameservers': [],
+                         'allocation_pools': [{'start': '10.123.2.2',
+                                               'end': '10.123.2.30'}],
+                         'host_routes': [],
+                         'ip_version': 4,
+                         'gateway_ip': '10.123.2.1',
+                         'cidr': '10.123.2.0/27',
+                         'id': '1111'}, ]
 
-        self.neutron_manager.ports = [port]
-        self.neutron_manager.subnets = [subnet]
-        self.neutron_manager.routers = [router]
+        self.mock_neutron.return_value = fake
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
 
-        generator = TemplateGenerator(False, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -305,17 +313,11 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_network(self):
-        network = {
-            'status': 'ACTIVE',
-            'subnets': ['1111'],
-            'name': 'mynetwork',
-            'router:external': False,
-            'admin_state_up': True,
-            'shared': False,
-            'id': '2222'
-        }
-        self.neutron_manager.networks = [network]
-        generator = TemplateGenerator(False, False, True)
+        fake = FakeNeutronManager()
+        self.mock_neutron.return_value = FakeNeutronManager()
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -335,17 +337,13 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_external_network(self):
-        network = {
-            'status': 'ACTIVE',
-            'subnets': ['1111'],
-            'name': 'internet',
-            'router:external': True,
-            'admin_state_up': True,
-            'shared': False,
-            'id': '2222'
-        }
-        self.neutron_manager.networks = [network]
-        generator = TemplateGenerator(False, False, True)
+        fake = FakeNeutronManager()
+        fake.networks[0]['router:external'] = True
+        self.mock_neutron.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -355,32 +353,23 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_subnet(self):
-        network = {
-            'status': 'ACTIVE',
-            'subnets': ['1111'],
-            'name': 'mynetwork',
-            'router:external': False,
-            'admin_state_up': True,
-            'shared': False,
-            'id': '2222'
-        }
-        subnet = {
-            'name': 'subnet_1111',
-            'enable_dhcp': True,
-            'network_id': '2222',
-            'dns_nameservers': [],
-            'allocation_pools': [{'start': '10.123.2.2',
-                                  'end': '10.123.2.30'}],
-            'host_routes': [],
-            'ip_version': 4,
-            'gateway_ip': '10.123.2.1',
-            'cidr': '10.123.2.0/27',
-            'id': '1111'
-        }
-        self.neutron_manager.networks = [network]
-        self.neutron_manager.subnets = [subnet]
+        fake = FakeNeutronManager()
+        fake.subnets = [{'name': 'subnet_1111',
+                         'enable_dhcp': True,
+                         'network_id': '2222',
+                         'dns_nameservers': [],
+                         'allocation_pools': [{'start': '10.123.2.2',
+                                               'end': '10.123.2.30'}],
+                         'host_routes': [],
+                         'ip_version': 4,
+                         'gateway_ip': '10.123.2.1',
+                         'cidr': '10.123.2.0/27',
+                         'id': '1111'}, ]
+        self.mock_neutron.return_value = fake
 
-        generator = TemplateGenerator(False, False, True)
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -401,17 +390,18 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_floatingip(self):
-        ip = {
-            'router_id': '1111',
-            'status': 'ACTIVE',
-            'floating_network_id': '1234',
-            'fixed_ip_address': '10.0.48.251',
-            'floating_ip_address': '84.39.33.60',
-            'port_id': '4321',
-            'id': '2222'
-        }
-        self.neutron_manager.floatingips = [ip]
-        generator = TemplateGenerator(True, False, True)
+        fake = FakeNeutronManager()
+        fake.floatingips = [{'router_id': '1111',
+                             'status': 'ACTIVE',
+                             'floating_network_id': '1234',
+                             'fixed_ip_address': '10.0.48.251',
+                             'floating_ip_address': '84.39.33.60',
+                             'port_id': '4321',
+                             'id': '2222'}, ]
+        self.mock_neutron.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(True, False, True)
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -432,8 +422,7 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_security_group(self):
-        rules = [
-            {
+        rules = [{
                 'remote_group_id': None,
                 'direction': 'ingress',
                 'remote_ip_prefix': '0.0.0.0/0',
@@ -444,18 +433,18 @@ class StackDataTests(base.TestCase):
                 'port_range_min': 22,
                 'id': '8901',
                 'security_group_id': '1234'
-            },
-        ]
-        group = {
-            'tenant_id': '7777',
-            'name': 'somename',
-            'description': 'description',
-            'security_group_rules': rules,
-            'id': '1234'
-        }
+            }, ]
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'somename',
+                        'description': 'description',
+                        'security_group_rules': rules,
+                        'id': '1234'}, ]
+        self.mock_neutron.return_value = fake
 
-        self.neutron_manager.groups = [group]
-        generator = TemplateGenerator(False, False, True)
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -475,8 +464,7 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_default_security_group(self):
-        rules = [
-            {
+        rules = [{
                 'remote_group_id': None,
                 'direction': 'ingress',
                 'remote_ip_prefix': '0.0.0.0/0',
@@ -487,18 +475,18 @@ class StackDataTests(base.TestCase):
                 'port_range_min': 22,
                 'id': '8901',
                 'security_group_id': '1234'
-            },
-        ]
-        group = {
-            'tenant_id': '7777',
-            'name': 'default',
-            'description': 'default',
-            'security_group_rules': rules,
-            'id': '1234'
-        }
+            }, ]
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'default',
+                        'description': 'default',
+                        'security_group_rules': rules,
+                        'id': '1234'}, ]
+        self.mock_neutron.return_value = fake
 
-        self.neutron_manager.groups = [group]
-        generator = TemplateGenerator(False, False, True)
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -508,8 +496,11 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_volume(self):
-        self.cinder_manager.volumes = [FakeVolume()]
-        generator = TemplateGenerator(False, False, True)
+        self.mock_cinder.return_value = FakeCinderManager()
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -530,8 +521,11 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_server(self):
-        self.nova_manager.servers = [FakeServer()]
-        generator = TemplateGenerator(False, False, True)
+        self.mock_nova.return_value = FakeNovaManager()
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -552,18 +546,20 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_server_with_default_security_group(self):
-        self.neutron_manager.groups = [
-            {
-                "name": "default",
-                "id": "1",
-                "security_group_rules": [],
-                "description": "default"
-            }
-        ]
-        self.nova_manager.groups = {'server1': [FakeSecurityGroup(
+        fake_neutron = FakeNeutronManager()
+        fake_nova = FakeNovaManager()
+        fake_neutron.groups = [{"name": "default",
+                                "id": "1",
+                                "security_group_rules": [],
+                                "description": "default"}, ]
+        fake_nova.groups = {'server1': [FakeSecurityGroup(
             name='default', description='default')]}
-        self.nova_manager.servers = [FakeServer()]
-        generator = TemplateGenerator(False, False, True)
+        self.mock_neutron.return_value = fake_neutron
+        self.mock_nova.return_value = fake_nova
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'action': 'CREATE',
             'status': 'COMPLETE',
@@ -623,18 +619,26 @@ class StackDataTests(base.TestCase):
 
 
 class NetworkTests(base.TestCase):
-
     def setUp(self):
         super(NetworkTests, self).setUp()
-        self.neutron_manager = FakeNeutronManager()
-        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
-        self.nova_manager = FakeNovaManager()
-        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
-        self.cinder_manager = FakeCinderManager()
-        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
+        self.patch_neutron = mock.patch('flameclient.managers.NeutronManager')
+        self.mock_neutron = self.patch_neutron.start()
+        self.patch_nova = mock.patch('flameclient.managers.NovaManager')
+        self.mock_nova = self.patch_nova.start()
+        self.patch_cinder = mock.patch('flameclient.managers.CinderManager')
+        self.mock_cinder = self.patch_cinder.start()
+
+    def tearDown(self):
+        super(NetworkTests, self).tearDown()
+        self.mock_neutron.stop()
+        self.mock_nova.stop()
+        self.mock_cinder.stop()
 
     def test_keypair(self):
-        generator = TemplateGenerator(False, False, False)
+        self.mock_nova.return_value = FakeNovaManager()
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -653,14 +657,10 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_router(self):
-        router = {
-            'name': 'myrouter',
-            'id': '1234',
-            'admin_state_up': 'true',
-            'external_gateway_info': None
-        }
-        self.neutron_manager.routers = [router]
-        generator = TemplateGenerator(False, False, False)
+        self.mock_neutron.return_value = FakeNeutronManager()
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -679,17 +679,17 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_router_with_external_gateway(self):
-        router = {
-            'name': 'myrouter',
-            'id': '1234',
-            'admin_state_up': 'true',
-            'external_gateway_info': {
-                'network_id': '8765',
-                'enable_snat': 'true'
-            }
-        }
-        self.neutron_manager.routers = [router]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeNeutronManager()
+        fake.routers = [{'name': 'myrouter',
+                         'id': '1234',
+                         'admin_state_up': 'true',
+                         'external_gateway_info': {
+                             'network_id': '8765',
+                             'enable_snat': 'true'}}, ]
+        self.mock_neutron.return_value = fake
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -723,46 +723,37 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_router_with_ports(self):
-        router = {
-            'name': 'myrouter',
-            'id': '1234',
-            'admin_state_up': 'true',
-            'external_gateway_info': None
-        }
-        port = {
-            'status': 'ACTIVE',
-            'name': '',
-            'allowed_address_pairs': [],
-            'admin_state_up': True,
-            'network_id': '4444',
-            'extra_dhcp_opts': [],
-            'binding:vnic_type': 'normal',
-            'device_owner': 'network:router_interface',
-            'mac_address': 'fa:16:3e:4b:8c:98',
-            'fixed_ips': [{'subnet_id': '1111', 'ip_address': '10.123.2.3'}],
-            'id': '1234567',
-            'security_groups': [],
-            'device_id': '1234'
-        }
-        subnet = {
-            'name': 'subnet_1111',
-            'enable_dhcp': True,
-            'network_id': '1234',
-            'dns_nameservers': [],
-            'allocation_pools': [{'start': '10.123.2.2',
-                                  'end': '10.123.2.30'}],
-            'host_routes': [],
-            'ip_version': 4,
-            'gateway_ip': '10.123.2.1',
-            'cidr': '10.123.2.0/27',
-            'id': '1111'
-        }
+        fake = FakeNeutronManager()
+        fake.ports = [{'status': 'ACTIVE',
+                       'name': '',
+                       'allowed_address_pairs': [],
+                       'admin_state_up': True,
+                       'network_id': '4444',
+                       'extra_dhcp_opts': [],
+                       'binding:vnic_type': 'normal',
+                       'device_owner': 'network:router_interface',
+                       'mac_address': 'fa:16:3e:4b:8c:98',
+                       'fixed_ips': [{'subnet_id': '1111',
+                                      'ip_address': '10.123.2.3'}],
+                        'id': '1234567',
+                        'security_groups': [],
+                        'device_id': '1234'}, ]
+        fake.subnets = [{'name': 'subnet_1111',
+                         'enable_dhcp': True,
+                         'network_id': '1234',
+                         'dns_nameservers': [],
+                         'allocation_pools': [{'start': '10.123.2.2',
+                                               'end': '10.123.2.30'}],
+                         'host_routes': [],
+                         'ip_version': 4,
+                         'gateway_ip': '10.123.2.1',
+                         'cidr': '10.123.2.0/27',
+                         'id': '1111'}, ]
 
-        self.neutron_manager.ports = [port]
-        self.neutron_manager.subnets = [subnet]
-        self.neutron_manager.routers = [router]
+        self.mock_neutron.return_value = fake
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
 
-        generator = TemplateGenerator(False, False, False)
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -788,17 +779,11 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_network(self):
-        network = {
-            'status': 'ACTIVE',
-            'subnets': ['1111'],
-            'name': 'mynetwork',
-            'router:external': False,
-            'admin_state_up': True,
-            'shared': False,
-            'id': '2222'
-        }
-        self.neutron_manager.networks = [network]
-        generator = TemplateGenerator([], [], [])
+        fake = FakeNeutronManager()
+        self.mock_neutron.return_value = FakeNeutronManager()
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -818,17 +803,13 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_external_network(self):
-        network = {
-            'status': 'ACTIVE',
-            'subnets': ['1111'],
-            'name': 'mynetwork',
-            'router:external': True,
-            'admin_state_up': True,
-            'shared': False,
-            'id': '2222'
-        }
-        self.neutron_manager.networks = [network]
-        generator = TemplateGenerator([], [], [])
+        fake = FakeNeutronManager()
+        fake.networks[0]['router:external'] = True
+        self.mock_neutron.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -839,32 +820,23 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_subnet(self):
-        network = {
-            'status': 'ACTIVE',
-            'subnets': ['1111'],
-            'name': 'mynetwork',
-            'router:external': False,
-            'admin_state_up': True,
-            'shared': False,
-            'id': '2222'
-        }
-        subnet = {
-            'name': 'subnet_1111',
-            'enable_dhcp': True,
-            'network_id': '2222',
-            'dns_nameservers': [],
-            'allocation_pools': [{'start': '10.123.2.2',
-                                  'end': '10.123.2.30'}],
-            'host_routes': [],
-            'ip_version': 4,
-            'gateway_ip': '10.123.2.1',
-            'cidr': '10.123.2.0/27',
-            'id': '1111'
-        }
-        self.neutron_manager.networks = [network]
-        self.neutron_manager.subnets = [subnet]
+        fake = FakeNeutronManager()
+        fake.subnets = [{'name': 'subnet_1111',
+                         'enable_dhcp': True,
+                         'network_id': '2222',
+                         'dns_nameservers': [],
+                         'allocation_pools': [{'start': '10.123.2.2',
+                                               'end': '10.123.2.30'}],
+                         'host_routes': [],
+                         'ip_version': 4,
+                         'gateway_ip': '10.123.2.1',
+                         'cidr': '10.123.2.0/27',
+                         'id': '1111'}, ]
+        self.mock_neutron.return_value = fake
 
-        generator = TemplateGenerator([], [], [])
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -890,17 +862,19 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_floatingip(self):
-        ip = {
-            'router_id': '1111',
-            'status': 'ACTIVE',
-            'floating_network_id': '1234',
-            'fixed_ip_address': '10.0.48.251',
-            'floating_ip_address': '84.39.33.60',
-            'port_id': '4321',
-            'id': '2222'
-        }
-        self.neutron_manager.floatingips = [ip]
-        generator = TemplateGenerator(True, [], [])
+        fake = FakeNeutronManager()
+        fake.floatingips = [{'router_id': '1111',
+                             'status': 'ACTIVE',
+                             'floating_network_id': '1234',
+                             'fixed_ip_address': '10.0.48.251',
+                             'floating_ip_address': '84.39.33.60',
+                             'port_id': '4321',
+                             'id': '2222'}, ]
+        self.mock_neutron.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(True, False, False)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -976,16 +950,17 @@ class NetworkTests(base.TestCase):
                 'security_group_id': '1234'
             },
         ]
-        group = {
-            'tenant_id': '7777',
-            'name': 'toto',
-            'description': 'description',
-            'security_group_rules': rules,
-            'id': '1234'
-        }
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'toto',
+                        'description': 'description',
+                        'security_group_rules': rules,
+                        'id': '1234'}, ]
+        self.mock_neutron.return_value = fake
 
-        self.neutron_manager.groups = [group]
-        generator = TemplateGenerator([], [], [])
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, False)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1092,16 +1067,17 @@ class NetworkTests(base.TestCase):
                 'security_group_id': '1111'
             }
         ]
-        group = {
-            'tenant_id': '7777',
-            'name': 'default',
-            'description': 'default',
-            'security_group_rules': rules,
-            'id': '1111'
-        }
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'default',
+                        'description': 'default',
+                        'security_group_rules': rules,
+                        'id': '1111'}, ]
+        self.mock_neutron.return_value = fake
 
-        self.neutron_manager.groups = [group]
-        generator = TemplateGenerator([], [], [])
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, False)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1249,22 +1225,23 @@ class NetworkTests(base.TestCase):
                 'security_group_id': '2222'
             }
         ]
-        group1 = {
-            'tenant_id': '7777',
-            'name': 'security_group_1',
-            'description': 'security_group_1',
-            'security_group_rules': rules1,
-            'id': '1111'
-        }
-        group2 = {
-            'tenant_id': '7777',
-            'name': 'security_group_2',
-            'description': 'security_group_2',
-            'security_group_rules': rules2,
-            'id': '2222'
-        }
-        self.neutron_manager.groups = [group1, group2]
-        generator = TemplateGenerator([], [], [])
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'security_group_1',
+                        'description': 'security_group_1',
+                        'security_group_rules': rules1,
+                        'id': '1111'},
+                        {'tenant_id': '7777',
+                        'name': 'security_group_2',
+                        'description': 'security_group_2',
+                        'security_group_rules': rules2,
+                        'id': '2222'},
+                        ]
+        self.mock_neutron.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1350,19 +1327,27 @@ class NetworkTests(base.TestCase):
 
 
 class VolumeTests(base.TestCase):
-
     def setUp(self):
         super(VolumeTests, self).setUp()
-        self.neutron_manager = FakeNeutronManager()
-        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
-        self.nova_manager = FakeNovaManager()
-        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
-        self.cinder_manager = FakeCinderManager()
-        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
+        self.patch_neutron = mock.patch('flameclient.managers.NeutronManager')
+        self.mock_neutron = self.patch_neutron.start()
+        self.patch_nova = mock.patch('flameclient.managers.NovaManager')
+        self.mock_nova = self.patch_nova.start()
+        self.patch_cinder = mock.patch('flameclient.managers.CinderManager')
+        self.mock_cinder = self.patch_cinder.start()
+
+    def tearDown(self):
+        super(VolumeTests, self).tearDown()
+        self.mock_neutron.stop()
+        self.mock_nova.stop()
+        self.mock_cinder.stop()
 
     def test_basic(self):
-        self.cinder_manager.volumes = [FakeVolume()]
-        generator = TemplateGenerator(False, False, False)
+        self.mock_cinder.return_value = FakeCinderManager()
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1382,8 +1367,13 @@ class VolumeTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_source_volid_external(self):
-        self.cinder_manager.volumes = [FakeVolume(source_volid=5678)]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeCinderManager()
+        fake.volumes = [FakeVolume(source_volid=5678), ]
+        self.mock_cinder.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1409,9 +1399,14 @@ class VolumeTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_source_volid_included(self):
-        self.cinder_manager.volumes = [
-            FakeVolume(source_volid=5678), FakeVolume(id=5678)]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeCinderManager()
+        fake.volumes = [FakeVolume(source_volid=5678), FakeVolume(id=5678)]
+
+        self.mock_cinder.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1451,11 +1446,14 @@ class VolumeTests(base.TestCase):
             'checksum': 'f8a2e',
             'min_disk': '0',
             'size': '25'}
+        fake = FakeCinderManager()
+        fake.volumes = [FakeVolume(bootable='true',
+                                   volume_image_metadata=metadata), ]
+        self.mock_cinder.return_value = fake
 
-        self.cinder_manager.volumes = [
-            FakeVolume(bootable='true', volume_image_metadata=metadata)
-        ]
-        generator = TemplateGenerator(False, False, False)
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1482,8 +1480,13 @@ class VolumeTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_snapshot_id(self):
-        self.cinder_manager.volumes = [FakeVolume(snapshot_id=5678)]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeCinderManager()
+        fake.volumes = [FakeVolume(snapshot_id=5678), ]
+        self.mock_cinder.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1510,8 +1513,13 @@ class VolumeTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_volume_type(self):
-        self.cinder_manager.volumes = [FakeVolume(volume_type='isci')]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeCinderManager()
+        fake.volumes = [FakeVolume(volume_type='isci'), ]
+        self.mock_cinder.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1538,8 +1546,13 @@ class VolumeTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_metadata(self):
-        self.cinder_manager.volumes = [FakeVolume(metadata={'key': 'value'})]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeCinderManager()
+        fake.volumes = [FakeVolume(metadata={'key': 'value'}), ]
+        self.mock_cinder.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1561,19 +1574,27 @@ class VolumeTests(base.TestCase):
 
 
 class ServerTests(base.TestCase):
-
     def setUp(self):
         super(ServerTests, self).setUp()
-        self.neutron_manager = FakeNeutronManager()
-        TemplateGenerator.neutron_manager = (lambda x: self.neutron_manager)
-        self.nova_manager = FakeNovaManager()
-        TemplateGenerator.nova_manager = (lambda x: self.nova_manager)
-        self.cinder_manager = FakeCinderManager()
-        TemplateGenerator.cinder_manager = (lambda x: self.cinder_manager)
+        self.patch_neutron = mock.patch('flameclient.managers.NeutronManager')
+        self.mock_neutron = self.patch_neutron.start()
+        self.patch_nova = mock.patch('flameclient.managers.NovaManager')
+        self.mock_nova = self.patch_nova.start()
+        self.patch_cinder = mock.patch('flameclient.managers.CinderManager')
+        self.mock_cinder = self.patch_cinder.start()
+
+    def tearDown(self):
+        super(ServerTests, self).tearDown()
+        self.mock_neutron.stop()
+        self.mock_nova.stop()
+        self.mock_cinder.stop()
 
     def test_basic(self):
-        self.nova_manager.servers = [FakeServer()]
-        generator = TemplateGenerator(False, False, False)
+        self.mock_nova.return_value = FakeNovaManager()
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1605,8 +1626,13 @@ class ServerTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_keypair(self):
-        self.nova_manager.servers = [FakeServer(key_name='testkey')]
-        generator = TemplateGenerator(False, False, False)
+        fake = FakeNovaManager()
+        fake.servers = [FakeServer(key_name='testkey')]
+        self.mock_nova.return_value = fake
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1643,18 +1669,22 @@ class ServerTests(base.TestCase):
                         'server_id': '777',
                         'id': '5678',
                         'host_name': None,
-                        'volume_id': '5678'}]
-        self.cinder_manager.volumes = [FakeVolume(id=5678,
-                                                  attachments=attachments,
-                                                  bootable='true')]
-        servers_args = {
-            "id": 777,
-            "image": None,
-            "os-extended-volumes:volumes_attached": [{'id': 5678}]
-        }
-        server = FakeServer(**servers_args)
-        self.nova_manager.servers = [server]
-        generator = TemplateGenerator(False, False, False)
+                        'volume_id': '5678'}, ]
+        servers_args = {"id": 777,
+                        "image": None,
+                        "os-extended-volumes:volumes_attached": [{'id': 5678}]}
+        fake_nova = FakeNovaManager()
+        fake_nova.servers = [FakeServer(**servers_args), ]
+        self.mock_nova.return_value = fake_nova
+        fake_cinder = FakeCinderManager()
+        fake_cinder.volumes = [FakeVolume(id=5678,
+                                          attachments=attachments,
+                                          bootable='true')]
+        self.mock_cinder.return_value = fake_cinder
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1686,16 +1716,25 @@ class ServerTests(base.TestCase):
                         'server_id': '777',
                         'id': '5678',
                         'host_name': None,
-                        'volume_id': '5678'}]
-        self.cinder_manager.volumes = [FakeVolume(id=5678,
-                                                  attachments=attachments,
-                                                  bootable='false')]
-        server_args = {
-            "id": 777,
-            "os-extended-volumes:volumes_attached": [{'id': 5678}]}
-        server = FakeServer(**server_args)
-        self.nova_manager.servers = [server]
-        generator = TemplateGenerator(False, False, False)
+                        'volume_id': '5678'}, ]
+        fake_cinder = FakeCinderManager()
+        fake_cinder.volumes = [FakeVolume(id=5678, attachments=attachments,
+                                          bootable='false'), ]
+        self.mock_cinder.return_value = fake_cinder
+        server_args = {"id": 777,
+                       "os-extended-volumes:volumes_attached": [{'id': 5678}]}
+        fake_nova = FakeNovaManager()
+        fake_nova.servers = [FakeServer(**server_args), ]
+        self.mock_nova.return_value = fake_nova
+        fake_cinder = FakeCinderManager()
+        fake_cinder.volumes = [FakeVolume(id=5678,
+                                          attachments=attachments,
+                                          bootable='false'), ]
+        self.mock_cinder.return_value = fake_cinder
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1730,13 +1769,19 @@ class ServerTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_security_groups(self):
-        self.neutron_manager.groups = [
-            {"name": "group1", "id": "1", "security_group_rules": [],
-                "description": "Group"}
-        ]
-        self.nova_manager.groups = {'server1': [FakeSecurityGroup()]}
-        self.nova_manager.servers = [FakeServer()]
-        generator = TemplateGenerator(False, False, False)
+        fake_neutron = FakeNeutronManager()
+        fake_neutron.groups = [{"name": "group1",
+                                "id": "1",
+                                "security_group_rules": [],
+                                "description": "Group"}, ]
+        self.mock_neutron.return_value = fake_neutron
+        fake_nova = FakeNovaManager()
+        fake_nova.groups = {'server1': [FakeSecurityGroup(), ]}
+        self.mock_nova.return_value = fake_nova
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1782,8 +1827,13 @@ class ServerTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_config_drive(self):
-        self.nova_manager.servers = [FakeServer(config_drive="True")]
-        generator = TemplateGenerator(False, False, False)
+        fake_nova = FakeNovaManager()
+        fake_nova.servers = [FakeServer(config_drive="True"), ]
+        self.mock_nova.return_value = fake_nova
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1816,8 +1866,13 @@ class ServerTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_metadata(self):
-        self.nova_manager.servers = [FakeServer(metadata={"key": "value"})]
-        generator = TemplateGenerator(False, False, False)
+        fake_nova = FakeNovaManager()
+        fake_nova.servers = [FakeServer(metadata={"key": "value"}), ]
+        self.mock_nova.return_value = fake_nova
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1860,14 +1915,18 @@ class ServerTests(base.TestCase):
             "enable_dhcp": True,
             "host_routes": [],
             "ip_version": 4}
-        self.neutron_manager.subnets = [subnet]
-        network = {
-            "id": "1234",
-            "name": "private"}
-        self.neutron_manager.networks = [network]
+        fake_neutron = FakeNeutronManager()
+        fake_neutron.subnets = [subnet]
+        fake_neutron.networks = [{"id": "1234", "name": "private"}, ]
+        self.mock_neutron.return_value = fake_neutron
+        fake_nova = FakeNovaManager()
         addresses = {"private": [{"addr": "10.0.0.2"}]}
-        self.nova_manager.servers = [FakeServer(addresses=addresses)]
-        generator = TemplateGenerator(False, False, False)
+        fake_nova.servers = [FakeServer(addresses=addresses)]
+        self.mock_nova.return_value = fake_nova
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, False, True)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
@@ -1906,15 +1965,19 @@ class ServerTests(base.TestCase):
                         'id': '5678',
                         'host_name': None,
                         'volume_id': '5678'}]
-        self.cinder_manager.volumes = [FakeVolume(id=5678,
-                                                  attachments=attachments,
-                                                  bootable='false')]
-        server_args = {
-            "id": 777,
-            "os-extended-volumes:volumes_attached": [{'id': 5678}]}
-        server = FakeServer(**server_args)
-        self.nova_manager.servers = [server]
-        generator = TemplateGenerator(False, True, False)
+        fake_cinder = FakeCinderManager()
+        fake_cinder.volumes = [FakeVolume(id=5678, attachments=attachments,
+                                          bootable='false'), ]
+        self.mock_cinder.return_value = fake_cinder
+        server_args = {"id": 777,
+                       "os-extended-volumes:volumes_attached": [{'id': 5678}]}
+        fake_nova = FakeNovaManager()
+        fake_nova.servers = [FakeServer(**server_args), ]
+        self.mock_nova.return_value = fake_nova
+
+        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator.extract_vm_details(False, True, False)
+
         expected = {
             'heat_template_version': datetime.date(2013, 5, 23),
             'description': 'Generated template',
