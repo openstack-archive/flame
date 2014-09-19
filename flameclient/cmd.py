@@ -69,11 +69,11 @@ def main(args=None):
     args = parser.parse_args()
     template = TemplateGenerator(args.username, args.password, args.project,
                                  args.auth_url, args.insecure)
-    template.extract_server_details(args.exclude_servers, args.exclude_volumes,
-                                    args.generate_stack_data)
+    template.extract_vm_details(args.exclude_servers, args.exclude_volumes,
+                                args.generate_stack_data)
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template())
     if args.generate_stack_data:
         print("### Stack Data ###")
-        print(template.stack_data())
+        print(template.stack_data_template())
