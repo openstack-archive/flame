@@ -30,7 +30,6 @@ import yaml
 from flameclient import managers
 
 
-
 logging.basicConfig(level=logging.ERROR)
 
 template_skeleton = '''
@@ -48,26 +47,38 @@ resources:
 
 
 class TemplateGenerator(object):
+    template = None
+    stack_data = None
 
-    neutron_manager = managers.NeutronManager
-    nova_manager = managers.NovaManager
-    cinder_manager = managers.CinderManager
+    def __init__(self, username, password, tenant_name, auth_url, insecure):
+        self.generate_data = False
+        self._setup_templates()
+        self._setup_managers(username, password, tenant_name, auth_url,
+                             insecure)
 
-    def __init__(self, exclude_servers, exclude_volumes,
-                 generate_data, *arguments):
-        self.exclude_servers = exclude_servers
-        self.exclude_volumes = exclude_volumes
-        self.generate_data = generate_data
-
+    def _setup_templates(self):
         self.template = yaml.load(template_skeleton)
         self.template['resources'] = {}
         self.template['parameters'] = {}
 
-        if self.generate_data:
-            self.stack_data = yaml.load(stack_data_skeleton)
-            self.stack_data['resources'] = {}
+        self.stack_data = yaml.load(stack_data_skeleton)
+        self.stack_data['resources'] = {}
 
-        self.neutron = self.neutron_manager(*arguments)
+    def _setup_managers(self, username, password, tenant_name, auth_url,
+                        insecure):
+        self.neutron = managers.NeutronManager(username, password, tenant_name,
+                                               auth_url, insecure)
+        self.nova = managers.NovaManager(username, password, tenant_name,
+                                         auth_url, insecure)
+        self.cinder = managers.CinderManager(username, password, tenant_name,
+                                             auth_url, insecure)
+
+    def extract_vm_details(self, exclude_servers, exclude_volumes,
+                           generate_data):
+        self.exclude_servers = exclude_servers
+        self.exclude_volumes = exclude_volumes
+        self.generate_data = generate_data
+
         self.subnets = self.build_data(self.neutron.subnet_list())
         self.networks = self.build_data(self.neutron.network_list())
         self.routers = self.neutron.router_list()
@@ -76,18 +87,16 @@ class TemplateGenerator(object):
         self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
 
-        self.nova = self.nova_manager(*arguments)
         self.keys = dict(
             (key.name, (index, key))
             for index, key in enumerate(self.nova.keypair_list()))
 
-        if not self.exclude_servers:
+        if not exclude_servers:
             self.flavors = self.build_data(self.nova.flavor_list())
             self.servers = self.build_data(self.nova.server_list())
 
-        if (not self.exclude_volumes or
-                (self.exclude_volumes and not self.exclude_servers)):
-            self.cinder = self.cinder_manager(*arguments)
+        if (not exclude_volumes or
+                (exclude_volumes and not exclude_servers)):
             self.volumes = self.build_data(self.cinder.volume_list())
 
     def build_data(self, data):
@@ -101,9 +110,9 @@ class TemplateGenerator(object):
             return dict((element.id, (index, element))
                         for index, element in enumerate(data))
 
-    def print_generated(self, file, message):
-        print("########## %s ##########" % message)
-        print(yaml.safe_dump(file, default_flow_style=False))
+    @staticmethod
+    def print_generated(filename):
+        print(yaml.safe_dump(filename, default_flow_style=False))
 
     def add_resource(self, name, status, resource_id, resource_type):
         resource = {
@@ -191,7 +200,7 @@ class TemplateGenerator(object):
                 }
                 self.template['resources'].update(resource)
 
-    def extract_routers(self):
+    def _extract_routers(self):
         for n, router in enumerate(self.routers):
             router_resource_name = "router_%d" % n
             resource_type = 'OS::Neutron::Router'
@@ -219,7 +228,7 @@ class TemplateGenerator(object):
                 self.add_router_gateway_resource(router_resource_name,
                                                  router)
 
-    def extract_networks(self):
+    def _extract_networks(self):
         for n, network in self.networks.itervalues():
             if network['router:external']:
                 self.external_networks.append(network['id'])
@@ -245,13 +254,13 @@ class TemplateGenerator(object):
             }
             self.template['resources'].update(resource)
 
-    def get_network_resource_name(self, id):
-        return "network_%d" % self.networks[id][0]
+    def get_network_resource_name(self, network_id):
+        return "network_%d" % self.networks[network_id][0]
 
-    def get_subnet_resource_name(self, id):
-        return "subnet_%d" % self.subnets[id][0]
+    def get_subnet_resource_name(self, subnet_id):
+        return "subnet_%d" % self.subnets[subnet_id][0]
 
-    def extract_subnets(self):
+    def _extract_subnets(self):
         for n, subnet in self.subnets.itervalues():
             if subnet['network_id'] in self.external_networks:
                 continue
@@ -301,7 +310,7 @@ class TemplateGenerator(object):
             brules.append(rule)
         return brules
 
-    def extract_secgroups(self):
+    def _extract_secgroups(self):
         for n, secgroup in self.secgroups.itervalues():
 
             resource_name = "security_group_%d" % n
@@ -330,7 +339,7 @@ class TemplateGenerator(object):
             }
             self.template['resources'].update(resource)
 
-    def extract_keys(self):
+    def _extract_keys(self):
         for n, key in self.keys.itervalues():
             key_resource_name = "key_%d" % n
             resource_type = 'OS::Nova::KeyPair'
@@ -390,7 +399,7 @@ class TemplateGenerator(object):
                             networks.append({'network': {'get_resource': net}})
         return networks
 
-    def extract_servers(self):
+    def _extract_servers(self):
         for n, server in self.servers.itervalues():
             resource_name = "server_%d" % n
             resource_type = 'OS::Nova::Server'
@@ -475,7 +484,7 @@ class TemplateGenerator(object):
             }
             self.template['resources'].update(resource)
 
-    def extract_floating(self):
+    def _extract_floating(self):
         for n, ip in enumerate(self.floatingips):
             ip_resource_name = "floatingip_%d" % n
             net_param_name = "external_network_for_floating_ip_%d" % n
@@ -523,7 +532,7 @@ class TemplateGenerator(object):
                     self.template['resources'].update(resource)
             self.template['resources'].update(floating_resource)
 
-    def extract_volumes(self):
+    def _extract_volumes(self):
         for n, volume in self.volumes.itervalues():
             resource_name = "volume_%d" % n
             resource_type = 'OS::Cinder::Volume'
@@ -582,21 +591,20 @@ class TemplateGenerator(object):
             }
             self.template['resources'].update(resource)
 
-    def run(self):
-        self.extract_routers()
-        self.extract_networks()
-        self.extract_subnets()
-        self.extract_secgroups()
-        self.extract_floating()
-        self.extract_keys()
-
+    def extract_data(self):
+        self._extract_routers()
+        self._extract_networks()
+        self._extract_subnets()
+        self._extract_secgroups()
+        self._extract_floating()
+        self._extract_keys()
         if not self.exclude_servers:
-            self.extract_servers()
-
+            self._extract_servers()
         if not self.exclude_volumes:
-            self.extract_volumes()
+            self._extract_volumes()
 
-        self.print_generated(self.template, "Heat Template")
+    def heat_template(self):
+        return self.print_generated(self.template)
 
-        if self.generate_data:
-            self.print_generated(self.stack_data, "Heat Stack Data")
+    def stack_data_template(self):
+        return self.print_generated(self.stack_data)
