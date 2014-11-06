@@ -48,7 +48,7 @@ class KeystoneManager(object):
                                                   insecure=self.insecure)
         return self._client
 
-    def set_client(client):
+    def set_client(self, client):
         self._client = client
 
     def get_token(self):
@@ -138,8 +138,8 @@ class NovaManager(object):
     def client(self):
         if not self._client:
             self._client = nova_client.Client(self.username, self.password,
-                                             self.project, self.auth_url,
-                                             insecure=self.insecure)
+                                              self.project, self.auth_url,
+                                              insecure=self.insecure)
         return self._client
 
     def set_client(self, client):

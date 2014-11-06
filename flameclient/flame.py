@@ -193,8 +193,10 @@ class TemplateGenerator(object):
                     port_resource_name: {
                         'type': resource_type,
                         'properties': {
-                            'subnet_id': {'get_resource': subnet_resource_name},
-                            'router_id': {'get_resource': router_resource_name}
+                            'subnet_id': {
+                                'get_resource': subnet_resource_name},
+                            'router_id': {
+                                'get_resource': router_resource_name}
                         }
                     }
                 }
