@@ -32,12 +32,14 @@ class KeystoneManager(object):
     """Manages Keystone queries."""
     _client = None
 
-    def __init__(self, username, password, project, auth_url, insecure):
+    def __init__(self, username, password, project, auth_url, insecure,
+                 region_name=None):
         self.username = username
         self.password = password
         self.project = project
         self.auth_url = auth_url
         self.insecure = insecure
+        self.region_name = region_name
 
     def client(self):
         if not self._client:
@@ -45,6 +47,7 @@ class KeystoneManager(object):
                                                   password=self.password,
                                                   tenant_name=self.project,
                                                   auth_url=self.auth_url,
+                                                  region_name=self.region_name,
                                                   insecure=self.insecure)
         return self._client
 
@@ -66,12 +69,14 @@ class NeutronManager(object):
     _client = None
     _project_id = None
 
-    def __init__(self, username, password, project, auth_url, insecure):
+    def __init__(self, username, password, project, auth_url, insecure,
+                 region_name=None):
         self.username = username
         self.password = password
         self.project = project
         self.auth_url = auth_url
         self.insecure = insecure
+        self.region_name = region_name
 
     def client(self):
         if not self._client:
@@ -79,11 +84,13 @@ class NeutronManager(object):
                                                  password=self.password,
                                                  tenant_name=self.project,
                                                  auth_url=self.auth_url,
+                                                 region_name=self.region_name,
                                                  insecure=self.insecure)
         if not self._project_id:
             keystone_mgr = KeystoneManager(self.username, self.password,
                                            self.project, self.auth_url,
-                                           self.insecure)
+                                           self.insecure,
+                                           region_name=self.region_name)
             self._project_id = keystone_mgr.get_project_id()
         return self._client
 
@@ -128,17 +135,20 @@ class NovaManager(object):
     """Manage nova resources."""
     _client = None
 
-    def __init__(self, username, password, project, auth_url, insecure):
+    def __init__(self, username, password, project, auth_url, insecure,
+                 region_name=None):
         self.username = username
         self.password = password
         self.project = project
         self.auth_url = auth_url
+        self.region_name = region_name
         self.insecure = insecure
 
     def client(self):
         if not self._client:
             self._client = nova_client.Client(self.username, self.password,
                                               self.project, self.auth_url,
+                                              region_name=self.region_name,
                                               insecure=self.insecure)
         return self._client
 
@@ -171,11 +181,13 @@ class CinderManager(object):
     """Manage Cinder resources."""
     _client = None
 
-    def __init__(self, username, password, project, auth_url, insecure):
+    def __init__(self, username, password, project, auth_url, insecure,
+                 region_name=None):
         self.username = username
         self.password = password
         self.project = project
         self.auth_url = auth_url
+        self.region_name = region_name
         self.insecure = insecure
 
     def client(self):
@@ -184,6 +196,7 @@ class CinderManager(object):
                                                 self.password,
                                                 self.project,
                                                 self.auth_url,
+                                                region_name=self.region_name,
                                                 insecure=self.insecure)
         return self._client
 
