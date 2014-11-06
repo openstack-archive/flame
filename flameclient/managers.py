@@ -48,7 +48,7 @@ class KeystoneManager(object):
                                                   insecure=self.insecure)
         return self._client
 
-    def set_client(client):
+    def set_client(self, client):
         self._client = client
 
     def get_token(self):
