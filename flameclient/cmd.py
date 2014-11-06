@@ -27,7 +27,7 @@ from __future__ import print_function
 import argparse
 import os
 
-from flame import TemplateGenerator
+from flameclient.flame import TemplateGenerator
 
 
 def main(args=None):

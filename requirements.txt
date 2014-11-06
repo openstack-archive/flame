@@ -2,7 +2,7 @@ pbr>=0.6,!=0.7,<1.0
 Babel>=1.3
 
 argparse
-ipaddr
+netaddr>=0.7.12
 python-keystoneclient
 python-neutronclient
 python-novaclient
