@@ -24,7 +24,7 @@
 
 import logging
 
-import ipaddr
+import netaddr
 import yaml
 
 from flameclient import managers
@@ -193,8 +193,10 @@ class TemplateGenerator(object):
                     port_resource_name: {
                         'type': resource_type,
                         'properties': {
-                            'subnet_id': {'get_resource': subnet_resource_name},
-                            'router_id': {'get_resource': router_resource_name}
+                            'subnet_id': {
+                                'get_resource': subnet_resource_name},
+                            'router_id': {
+                                'get_resource': router_resource_name}
                         }
                     }
                 }
@@ -390,7 +392,7 @@ class TemplateGenerator(object):
         for net_name in addresses:
             ip = addresses[net_name][0]['addr']
             for s, subnet in self.subnets.itervalues():
-                if ipaddr.IPAddress(ip) in ipaddr.IPNetwork(subnet['cidr']):
+                if netaddr.IPAddress(ip) in netaddr.IPNetwork(subnet['cidr']):
                     for n, network in self.networks.itervalues():
                         if (network['name'] == net_name and
                                 network['id'] == subnet['network_id']):
