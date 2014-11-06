@@ -26,7 +26,6 @@ import datetime
 
 import mock
 
-import flameclient
 from flameclient.flame import TemplateGenerator  # noqa
 from flameclient.tests import base
 
@@ -85,21 +84,23 @@ class FakeSecurityGroup(FakeBase):
 
 
 class FakeNeutronManager(object):
-    groups = []
-    routers =  [{'name': 'myrouter',
-                 'id': '1234',
-                 'admin_state_up': 'true',
-                 'external_gateway_info': None}, ]
-    ports = []
-    subnets = []
-    networks = [{'status': 'ACTIVE',
-                 'subnets': ['1111'],
-                 'name': 'mynetwork',
-                 'router:external': False,
-                 'admin_state_up': True,
-                 'shared': False,
-                 'id': '2222'}, ]
-    floatingips = []
+
+    def __init__(self):
+        self.groups = []
+        self.routers = [{'name': 'myrouter',
+                         'id': '1234',
+                         'admin_state_up': 'true',
+                         'external_gateway_info': None}, ]
+        self.ports = []
+        self.subnets = []
+        self.networks = [{'status': 'ACTIVE',
+                          'subnets': ['1111'],
+                          'name': 'mynetwork',
+                          'router:external': False,
+                          'admin_state_up': True,
+                          'shared': False,
+                          'id': '2222'}, ]
+        self.floatingips = []
 
     def subnet_list(self):
         return self.subnets
@@ -125,10 +126,12 @@ class FakeNeutronManager(object):
 
 class FakeNovaManager(object):
 
-    servers = [FakeServer()]
-    flavors = [FakeFlavor(id='2', name='m1.small')]
-    groups = {}
-    keypairs = [FakeKeypair(name='testkey', public_key='ssh-rsa XXXX')]
+    def __init__(self):
+        self.servers = [FakeServer()]
+        self.flavors = [FakeFlavor(id='2', name='m1.small')]
+        self.groups = {}
+        self.keypairs = [FakeKeypair(name='testkey',
+                                     public_key='ssh-rsa XXXX')]
 
     def keypair_list(self):
         return self.keypairs
@@ -145,7 +148,8 @@ class FakeNovaManager(object):
 
 class FakeCinderManager(object):
 
-    volumes = [FakeVolume(), ]
+    def __init__(self):
+        self.volumes = [FakeVolume(), ]
 
     def volume_list(self):
         return self.volumes
@@ -266,9 +270,9 @@ class StackDataTests(base.TestCase):
                        'mac_address': 'fa:16:3e:4b:8c:98',
                        'fixed_ips': [{'subnet_id': '1111',
                                       'ip_address': '10.123.2.3'}],
-                        'id': '1234567',
-                        'security_groups': [],
-                        'device_id': '1234'}, ]
+                       'id': '1234567',
+                       'security_groups': [],
+                       'device_id': '1234'}, ]
         fake.subnets = [{'name': 'subnet_1111',
                          'enable_dhcp': True,
                          'network_id': '1234',
@@ -313,7 +317,6 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_network(self):
-        fake = FakeNeutronManager()
         self.mock_neutron.return_value = FakeNeutronManager()
         generator = TemplateGenerator('x', 'x', 'x', 'x', True)
         generator.extract_vm_details(False, False, True)
@@ -422,18 +425,16 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_security_group(self):
-        rules = [{
-                'remote_group_id': None,
-                'direction': 'ingress',
-                'remote_ip_prefix': '0.0.0.0/0',
-                'protocol': 'tcp',
-                'ethertype': 'IPv4',
-                'tenant_id': '7777',
-                'port_range_max': 22,
-                'port_range_min': 22,
-                'id': '8901',
-                'security_group_id': '1234'
-            }, ]
+        rules = [{'remote_group_id': None,
+                  'direction': 'ingress',
+                  'remote_ip_prefix': '0.0.0.0/0',
+                  'protocol': 'tcp',
+                  'ethertype': 'IPv4',
+                  'tenant_id': '7777',
+                  'port_range_max': 22,
+                  'port_range_min': 22,
+                  'id': '8901',
+                  'security_group_id': '1234'}, ]
         fake = FakeNeutronManager()
         fake.groups = [{'tenant_id': '7777',
                         'name': 'somename',
@@ -464,18 +465,16 @@ class StackDataTests(base.TestCase):
         self.assertEqual(expected, generator.stack_data)
 
     def test_default_security_group(self):
-        rules = [{
-                'remote_group_id': None,
-                'direction': 'ingress',
-                'remote_ip_prefix': '0.0.0.0/0',
-                'protocol': 'tcp',
-                'ethertype': 'IPv4',
-                'tenant_id': '7777',
-                'port_range_max': 22,
-                'port_range_min': 22,
-                'id': '8901',
-                'security_group_id': '1234'
-            }, ]
+        rules = [{'remote_group_id': None,
+                  'direction': 'ingress',
+                  'remote_ip_prefix': '0.0.0.0/0',
+                  'protocol': 'tcp',
+                  'ethertype': 'IPv4',
+                  'tenant_id': '7777',
+                  'port_range_max': 22,
+                  'port_range_min': 22,
+                  'id': '8901',
+                  'security_group_id': '1234'}, ]
         fake = FakeNeutronManager()
         fake.groups = [{'tenant_id': '7777',
                         'name': 'default',
@@ -735,9 +734,9 @@ class NetworkTests(base.TestCase):
                        'mac_address': 'fa:16:3e:4b:8c:98',
                        'fixed_ips': [{'subnet_id': '1111',
                                       'ip_address': '10.123.2.3'}],
-                        'id': '1234567',
-                        'security_groups': [],
-                        'device_id': '1234'}, ]
+                       'id': '1234567',
+                       'security_groups': [],
+                       'device_id': '1234'}, ]
         fake.subnets = [{'name': 'subnet_1111',
                          'enable_dhcp': True,
                          'network_id': '1234',
@@ -779,7 +778,6 @@ class NetworkTests(base.TestCase):
         self.assertEqual(expected, generator.template)
 
     def test_network(self):
-        fake = FakeNeutronManager()
         self.mock_neutron.return_value = FakeNeutronManager()
         generator = TemplateGenerator('x', 'x', 'x', 'x', True)
         generator.extract_vm_details(False, False, True)
@@ -1231,12 +1229,11 @@ class NetworkTests(base.TestCase):
                         'description': 'security_group_1',
                         'security_group_rules': rules1,
                         'id': '1111'},
-                        {'tenant_id': '7777',
+                       {'tenant_id': '7777',
                         'name': 'security_group_2',
                         'description': 'security_group_2',
                         'security_group_rules': rules2,
-                        'id': '2222'},
-                        ]
+                        'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
         generator = TemplateGenerator('x', 'x', 'x', 'x', True)

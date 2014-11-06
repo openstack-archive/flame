@@ -24,7 +24,7 @@
 
 import logging
 
-import ipaddr
+import netaddr
 import yaml
 
 from flameclient import managers
@@ -193,8 +193,10 @@ class TemplateGenerator(object):
                     port_resource_name: {
                         'type': resource_type,
                         'properties': {
-                            'subnet_id': {'get_resource': subnet_resource_name},
-                            'router_id': {'get_resource': router_resource_name}
+                            'subnet_id': {
+                                'get_resource': subnet_resource_name},
+                            'router_id': {
+                                'get_resource': router_resource_name}
                         }
                     }
                 }
@@ -229,7 +231,7 @@ class TemplateGenerator(object):
                                                  router)
 
     def _extract_networks(self):
-        for n, network in self.networks.itervalues():
+        for n, network in self.networks.values():
             if network['router:external']:
                 self.external_networks.append(network['id'])
                 continue
@@ -261,7 +263,7 @@ class TemplateGenerator(object):
         return "subnet_%d" % self.subnets[subnet_id][0]
 
     def _extract_subnets(self):
-        for n, subnet in self.subnets.itervalues():
+        for n, subnet in self.subnets.values():
             if subnet['network_id'] in self.external_networks:
                 continue
             subnet_resource_name = "subnet_%d" % n
@@ -306,12 +308,12 @@ class TemplateGenerator(object):
             del rule['tenant_id']
             del rule['id']
             del rule['security_group_id']
-            rule = dict((k, v) for k, v in rule.iteritems() if v is not None)
+            rule = dict((k, v) for k, v in rule.items() if v is not None)
             brules.append(rule)
         return brules
 
     def _extract_secgroups(self):
-        for n, secgroup in self.secgroups.itervalues():
+        for n, secgroup in self.secgroups.values():
 
             resource_name = "security_group_%d" % n
             resource_type = 'OS::Neutron::SecurityGroup'
@@ -340,7 +342,7 @@ class TemplateGenerator(object):
             self.template['resources'].update(resource)
 
     def _extract_keys(self):
-        for n, key in self.keys.itervalues():
+        for n, key in self.keys.values():
             key_resource_name = "key_%d" % n
             resource_type = 'OS::Nova::KeyPair'
 
@@ -389,9 +391,9 @@ class TemplateGenerator(object):
         networks = []
         for net_name in addresses:
             ip = addresses[net_name][0]['addr']
-            for s, subnet in self.subnets.itervalues():
-                if ipaddr.IPAddress(ip) in ipaddr.IPNetwork(subnet['cidr']):
-                    for n, network in self.networks.itervalues():
+            for s, subnet in self.subnets.values():
+                if netaddr.IPAddress(ip) in netaddr.IPNetwork(subnet['cidr']):
+                    for n, network in self.networks.values():
                         if (network['name'] == net_name and
                                 network['id'] == subnet['network_id']):
                             net = self.get_network_resource_name(
@@ -400,7 +402,7 @@ class TemplateGenerator(object):
         return networks
 
     def _extract_servers(self):
-        for n, server in self.servers.itervalues():
+        for n, server in self.servers.values():
             resource_name = "server_%d" % n
             resource_type = 'OS::Nova::Server'
 
@@ -533,7 +535,7 @@ class TemplateGenerator(object):
             self.template['resources'].update(floating_resource)
 
     def _extract_volumes(self):
-        for n, volume in self.volumes.itervalues():
+        for n, volume in self.volumes.values():
             resource_name = "volume_%d" % n
             resource_type = 'OS::Cinder::Volume'
 
