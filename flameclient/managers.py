@@ -24,6 +24,8 @@
 
 from cinderclient.v1 import client as cinder_client
 from keystoneclient.v2_0 import client as keystone_client
+from keystoneclient.openstack.common.apiclient import (
+    exceptions as keystone_exceptions)
 from neutronclient.v2_0 import client as neutron_client
 from novaclient.v1_1 import client as nova_client
 
@@ -189,15 +191,25 @@ class CinderManager(object):
         self.auth_url = auth_url
         self.region_name = region_name
         self.insecure = insecure
+        self.defined = True
 
     def client(self):
-        if not self._client:
-            self._client = cinder_client.Client(self.username,
-                                                self.password,
-                                                self.project,
-                                                self.auth_url,
-                                                region_name=self.region_name,
-                                                insecure=self.insecure)
+        if self.defined and not self._client:
+            client = cinder_client.Client(self.username,
+                                          self.password,
+                                          self.project,
+                                          self.auth_url,
+                                          region_name=self.region_name,
+                                          insecure=self.insecure)
+
+            # Check cinder endpoint existence
+            try:
+                client.authenticate()
+                self._client = client
+            except keystone_exceptions.EndpointNotFound:
+                self.defined = False
+                self._client = None
+
         return self._client
 
     def set_client(self, client):
@@ -205,9 +217,12 @@ class CinderManager(object):
 
     def volume_list(self):
         volumes = []
-        for vol in self.client().volumes.list():
-            volumes.append(self.client().volumes.get(vol.id))
+        client = self.client()
+        if client:
+            for vol in client.volumes.list():
+                volumes.append(client.volumes.get(vol.id))
         return volumes
 
     def snapshot_list(self):
-        return self.client().volume_snapshots.list()
+        client = self.client()
+        return client.volume_snapshots.list() if client else []
