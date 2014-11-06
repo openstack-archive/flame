@@ -45,6 +45,10 @@ def main(args=None):
                         default=os.environ.get("OS_TENANT_NAME"),
                         help="Name of project. "
                              "Defaults to env[OS_TENANT_NAME]")
+    parser.add_argument("--region",
+                        default=os.environ.get("OS_REGION_NAME"),
+                        help="Name of region. "
+                             "Defaults to env[OS_REGION_NAME]")
     parser.add_argument("--auth_url", type=str,
                         default=os.environ.get("OS_AUTH_URL"),
                         help="Authentication URL. "
@@ -68,7 +72,8 @@ def main(args=None):
 
     args = parser.parse_args()
     template = TemplateGenerator(args.username, args.password, args.project,
-                                 args.auth_url, args.insecure)
+                                 args.auth_url, args.insecure,
+                                 region_name=args.region)
     template.extract_vm_details(args.exclude_servers, args.exclude_volumes,
                                 args.generate_stack_data)
     template.extract_data()
