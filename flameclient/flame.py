@@ -111,8 +111,8 @@ class TemplateGenerator(object):
                         for index, element in enumerate(data))
 
     @staticmethod
-    def print_generated(filename):
-        print(yaml.safe_dump(filename, default_flow_style=False))
+    def format_template(filename):
+        return yaml.safe_dump(filename, default_flow_style=False)
 
     def add_resource(self, name, status, resource_id, resource_type):
         resource = {
@@ -606,7 +606,7 @@ class TemplateGenerator(object):
             self._extract_volumes()
 
     def heat_template(self):
-        return self.print_generated(self.template)
+        return self.format_template(self.template)
 
     def stack_data_template(self):
-        return self.print_generated(self.stack_data)
+        return self.format_template(self.stack_data)
