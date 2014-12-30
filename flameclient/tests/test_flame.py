@@ -22,8 +22,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import datetime
-
 import mock
 
 from flameclient.flame import TemplateGenerator  # noqa
@@ -178,6 +176,26 @@ class BaseTestCase(base.TestCase):
                                      generate_data)
         return generator
 
+    def check_stackdata(self, resources, expected_resources):
+        merged_resources = {}
+        for resource in resources:
+            merged_resources.update(resource.stack_resource)
+
+        self.assertEqual(expected_resources, merged_resources)
+
+    def check_template(self, resources, expected_resources,
+                       expected_parameters=None):
+
+        expected_parameters = expected_parameters or {}
+        merged_resources = {}
+        merged_parameters = {}
+        for resource in resources:
+            merged_resources.update(resource.template_resource)
+            merged_parameters.update(resource.template_parameter)
+
+        self.assertEqual(expected_resources, merged_resources)
+        self.assertEqual(expected_parameters, merged_parameters)
+
 
 class StackDataTests(BaseTestCase):
 
@@ -186,44 +204,34 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'key_0': {
-                    'type': 'OS::Nova::KeyPair',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'key_0',
-                    'resource_data': {},
-                    'resource_id': 'key',
-                    'status': 'COMPLETE'
-                }
+            'key_0': {
+                'type': 'OS::Nova::KeyPair',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE'
             }
         }
-        generator._extract_keys()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_keys(), expected)
 
     def test_router(self):
         self.mock_neutron.return_value = FakeNeutronManager()
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'router_0': {
-                    'type': 'OS::Neutron::Router',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'router_0',
-                    'resource_data': {},
-                    'resource_id': '1234',
-                    'status': 'COMPLETE'
-                }
+            'router_0': {
+                'type': 'OS::Neutron::Router',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE'
             }
         }
-        generator._extract_routers()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_routers(), expected)
 
     def test_router_with_external_gateway(self):
         fake = FakeNeutronManager()
@@ -237,32 +245,26 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'router_0': {
-                    'type': 'OS::Neutron::Router',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'router_0',
-                    'resource_data': {},
-                    'resource_id': '1234',
-                    'status': 'COMPLETE'
-                },
-                'router_0_gateway': {
-                    'type': 'OS::Neutron::RouterGateway',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'router_0_gateway',
-                    'resource_data': {},
-                    'resource_id': '1234:8765',
-                    'status': 'COMPLETE'
-                }
+            'router_0': {
+                'type': 'OS::Neutron::Router',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE'
+            },
+            'router_0_gateway': {
+                'type': 'OS::Neutron::RouterGateway',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0_gateway',
+                'resource_data': {},
+                'resource_id': '1234:8765',
+                'status': 'COMPLETE'
             }
         }
-
-        generator._extract_routers()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_routers(), expected)
 
     def test_router_with_ports(self):
         fake = FakeNeutronManager()
@@ -296,53 +298,43 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'router_0': {
-                    'type': 'OS::Neutron::Router',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'router_0',
-                    'resource_data': {},
-                    'resource_id': '1234',
-                    'status': 'COMPLETE'
-                },
-                'router_0_interface_0': {
-                    'type': 'OS::Neutron::RouterInterface',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'router_0_interface_0',
-                    'resource_data': {},
-                    'resource_id': '1234:subnet_id=1111',
-                    'status': 'COMPLETE'
-                }
+            'router_0': {
+                'type': 'OS::Neutron::Router',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE'
+            },
+            'router_0_interface_0': {
+                'type': 'OS::Neutron::RouterInterface',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0_interface_0',
+                'resource_data': {},
+                'resource_id': '1234:subnet_id=1111',
+                'status': 'COMPLETE'
             }
         }
-        generator._extract_routers()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_routers(), expected)
 
     def test_network(self):
         self.mock_neutron.return_value = FakeNeutronManager()
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'network_0': {
-                    'type': 'OS::Neutron::Net',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'network_0',
-                    'resource_data': {},
-                    'resource_id': '2222',
-                    'status': 'COMPLETE'
-                }
+            'network_0': {
+                'type': 'OS::Neutron::Net',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE'
             }
         }
-        generator._extract_networks()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_networks(), expected)
 
     def test_external_network(self):
         fake = FakeNeutronManager()
@@ -351,13 +343,7 @@ class StackDataTests(BaseTestCase):
 
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {}
-        }
-        generator._extract_networks()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_networks(), {})
 
     def test_subnet(self):
         fake = FakeNeutronManager()
@@ -377,23 +363,17 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'subnet_0': {
-                    'type': 'OS::Neutron::Subnet',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'subnet_0',
-                    'resource_data': {},
-                    'resource_id': '1111',
-                    'status': 'COMPLETE'
-                }
+            'subnet_0': {
+                'type': 'OS::Neutron::Subnet',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'subnet_0',
+                'resource_data': {},
+                'resource_id': '1111',
+                'status': 'COMPLETE'
             }
-
         }
-        generator._extract_subnets()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_subnets(), expected)
 
     def test_floatingip(self):
         fake = FakeNeutronManager()
@@ -409,23 +389,17 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(True, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'floatingip_0': {
-                    'type': 'OS::Neutron::FloatingIP',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'floatingip_0',
-                    'resource_data': {},
-                    'resource_id': '2222',
-                    'status': 'COMPLETE'
-                }
+            'floatingip_0': {
+                'type': 'OS::Neutron::FloatingIP',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'floatingip_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE'
             }
-
         }
-        generator._extract_floating()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_floating(), expected)
 
     def test_security_group(self):
         rules = [{'remote_group_id': None,
@@ -449,22 +423,17 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'security_group_0': {
-                    'type': 'OS::Neutron::SecurityGroup',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'security_group_0',
-                    'resource_data': {},
-                    'resource_id': '1234',
-                    'status': 'COMPLETE'
-                }
+            'security_group_0': {
+                'type': 'OS::Neutron::SecurityGroup',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'security_group_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE'
             }
         }
-        generator._extract_secgroups()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_secgroups(), expected)
 
     def test_default_security_group(self):
         rules = [{'remote_group_id': None,
@@ -487,13 +456,7 @@ class StackDataTests(BaseTestCase):
 
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {}
-        }
-        generator._extract_secgroups()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_secgroups(), {})
 
     def test_volume(self):
         self.mock_cinder.return_value = FakeCinderManager()
@@ -501,23 +464,17 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'volume_0',
-                    'resource_data': {},
-                    'resource_id': 1234,
-                    'status': 'COMPLETE'
-                }
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE'
             }
-
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_volumes(), expected)
 
     def test_server(self):
         self.mock_nova.return_value = FakeNovaManager()
@@ -525,23 +482,17 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'server_0',
-                    'resource_data': {},
-                    'resource_id': '1234',
-                    'status': 'COMPLETE'
-                }
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE'
             }
-
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.stack_data)
+        self.check_stackdata(generator._extract_servers(), expected)
 
     def test_server_with_default_security_group(self):
         fake_neutron = FakeNeutronManager()
@@ -558,61 +509,17 @@ class StackDataTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'action': 'CREATE',
-            'status': 'COMPLETE',
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'action': 'CREATE',
-                    'metadata': {},
-                    'name': 'server_0',
-                    'resource_data': {},
-                    'resource_id': '1234',
-                    'status': 'COMPLETE'
-                }
-            }
-
-        }
-        template_expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                },
-                'server_0_default_security_group': {
-                    'default': '1',
-                    'type': 'string',
-                    'description': 'Default security group for server server1'
-                }
-            },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'security_groups': [
-                            {
-                                'get_param': 'server_0_default_security_group'
-                            }
-                        ],
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'}
-                    }
-                }
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE'
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.stack_data)
-        self.assertEqual(template_expected, generator.template)
+        self.check_stackdata(generator._extract_servers(), expected)
 
 
 class NetworkTests(BaseTestCase):
@@ -622,42 +529,30 @@ class NetworkTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'key_0': {
-                    'type': 'OS::Nova::KeyPair',
-                    'properties': {
-                        'public_key': 'ssh-rsa XXXX',
-                        'name': 'testkey'
-                    }
+            'key_0': {
+                'type': 'OS::Nova::KeyPair',
+                'properties': {
+                    'public_key': 'ssh-rsa XXXX',
+                    'name': 'testkey'
                 }
             }
         }
-        generator._extract_keys()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_keys(), expected)
 
     def test_router(self):
         self.mock_neutron.return_value = FakeNeutronManager()
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'router_0': {
-                    'type': 'OS::Neutron::Router',
-                    'properties': {
-                        'name': 'myrouter',
-                        'admin_state_up': 'true',
-                    }
+            'router_0': {
+                'type': 'OS::Neutron::Router',
+                'properties': {
+                    'name': 'myrouter',
+                    'admin_state_up': 'true',
                 }
             }
         }
-        generator._extract_routers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_routers(), expected)
 
     def test_router_with_external_gateway(self):
         fake = FakeNeutronManager()
@@ -670,37 +565,33 @@ class NetworkTests(BaseTestCase):
         self.mock_neutron.return_value = fake
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'router_0_external_network': {
-                    'default': '8765',
-                    'type': 'string',
-                    'description': 'Router external network'
+        expected_parameters = {
+            'router_0_external_network': {
+                'default': '8765',
+                'type': 'string',
+                'description': 'Router external network'
+            }
+        }
+        expected_resources = {
+            'router_0': {
+                'type': 'OS::Neutron::Router',
+                'properties': {
+                    'name': 'myrouter',
+                    'admin_state_up': 'true',
                 }
             },
-            'resources': {
-                'router_0_gateway': {
-                    'type': 'OS::Neutron::RouterGateway',
-                    'properties': {
-                        'router_id': {'get_resource': 'router_0'},
-                        'network_id': {
-                            'get_param': 'router_0_external_network'
-                        }
-                    }
-                },
-                'router_0': {
-                    'type': 'OS::Neutron::Router',
-                    'properties': {
-                        'name': 'myrouter',
-                        'admin_state_up': 'true',
+            'router_0_gateway': {
+                'type': 'OS::Neutron::RouterGateway',
+                'properties': {
+                    'router_id': {'get_resource': 'router_0'},
+                    'network_id': {
+                        'get_param': 'router_0_external_network'
                     }
                 }
             }
         }
-        generator._extract_routers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_routers(), expected_resources,
+                            expected_parameters)
 
     def test_router_with_ports(self):
         fake = FakeNeutronManager()
@@ -734,50 +625,38 @@ class NetworkTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'router_0_interface_0': {
-                    'type': 'OS::Neutron::RouterInterface',
-                    'properties': {
-                        'subnet_id': {'get_resource': 'subnet_0'},
-                        'router_id': {'get_resource': 'router_0'}
-                    }
-                },
-                'router_0': {
-                    'type': 'OS::Neutron::Router',
-                    'properties': {
-                        'name': 'myrouter',
-                        'admin_state_up': 'true',
-                    }
+            'router_0': {
+                'type': 'OS::Neutron::Router',
+                'properties': {
+                    'name': 'myrouter',
+                    'admin_state_up': 'true',
+                }
+            },
+            'router_0_interface_0': {
+                'type': 'OS::Neutron::RouterInterface',
+                'properties': {
+                    'subnet_id': {'get_resource': 'subnet_0'},
+                    'router_id': {'get_resource': 'router_0'}
                 }
             }
         }
-        generator._extract_routers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_routers(), expected)
 
     def test_network(self):
         self.mock_neutron.return_value = FakeNeutronManager()
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'network_0': {
-                    'type': 'OS::Neutron::Net',
-                    'properties': {
-                        'shared': False,
-                        'name': 'mynetwork',
-                        'admin_state_up': True
-                    }
+            'network_0': {
+                'type': 'OS::Neutron::Net',
+                'properties': {
+                    'shared': False,
+                    'name': 'mynetwork',
+                    'admin_state_up': True
                 }
             }
         }
-        generator._extract_networks()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_networks(), expected)
 
     def test_external_network(self):
         fake = FakeNeutronManager()
@@ -786,14 +665,7 @@ class NetworkTests(BaseTestCase):
 
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {}
-        }
-        generator._extract_networks()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_networks(), {})
 
     def test_subnet(self):
         fake = FakeNeutronManager()
@@ -813,28 +685,22 @@ class NetworkTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'subnet_0': {
-                    'type': 'OS::Neutron::Subnet',
-                    'properties': {
-                        'network_id': {'get_resource': 'network_0'},
-                        'allocation_pools': [{'start': '10.123.2.2',
-                                              'end': '10.123.2.30'}],
-                        'host_routes': [],
-                        'name': 'subnet_1111',
-                        'enable_dhcp': True,
-                        'ip_version': 4,
-                        'cidr': '10.123.2.0/27',
-                        'dns_nameservers': []
-                    }
+            'subnet_0': {
+                'type': 'OS::Neutron::Subnet',
+                'properties': {
+                    'network_id': {'get_resource': 'network_0'},
+                    'allocation_pools': [{'start': '10.123.2.2',
+                                          'end': '10.123.2.30'}],
+                    'host_routes': [],
+                    'name': 'subnet_1111',
+                    'enable_dhcp': True,
+                    'ip_version': 4,
+                    'cidr': '10.123.2.0/27',
+                    'dns_nameservers': []
                 }
             }
         }
-        generator._extract_subnets()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_subnets(), expected)
 
     def test_floatingip(self):
         fake = FakeNeutronManager()
@@ -849,29 +715,25 @@ class NetworkTests(BaseTestCase):
 
         generator = self.get_generator(True, False, False)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'external_network_for_floating_ip_0': {
-                    'default': '1234',
-                    'type': 'string',
-                    'description': 'Network to allocate floating IP from'
-                }
-            },
-            'resources': {
-                'floatingip_0': {
-                    'type': 'OS::Neutron::FloatingIP',
-                    'properties': {
-                        'floating_network_id': {
-                            'get_param': 'external_network_for_floating_ip_0'
-                        }
+        expected_parameters = {
+            'external_network_for_floating_ip_0': {
+                'default': '1234',
+                'type': 'string',
+                'description': 'Network to allocate floating IP from'
+            }
+        }
+        expected_resources = {
+            'floatingip_0': {
+                'type': 'OS::Neutron::FloatingIP',
+                'properties': {
+                    'floating_network_id': {
+                        'get_param': 'external_network_for_floating_ip_0'
                     }
                 }
             }
         }
-        generator._extract_floating()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_floating(), expected_resources,
+                            expected_parameters)
 
     def test_security_group(self):
         rules = [
@@ -935,47 +797,41 @@ class NetworkTests(BaseTestCase):
         generator = self.get_generator(False, False, False)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'security_group_0': {
-                    'type': 'OS::Neutron::SecurityGroup',
-                    'properties': {
-                        'rules': [
-                            {
-                                'direction': 'ingress',
-                                'protocol': 'tcp',
-                                'ethertype': 'IPv4',
-                                'port_range_max': 65535,
-                                'port_range_min': 1,
-                                'remote_mode': 'remote_group_id'
-                            },
-                            {
-                                'ethertype': 'IPv4',
-                                'direction': 'egress'
-                            },
-                            {
-                                'ethertype': 'IPv6',
-                                'direction': 'egress'
-                            },
-                            {
-                                'direction': 'ingress',
-                                'protocol': 'tcp',
-                                'ethertype': 'IPv4',
-                                'port_range_max': 22,
-                                'port_range_min': 22,
-                                'remote_ip_prefix': '0.0.0.0/0'
-                            }
-                        ],
-                        'description': 'description',
-                        'name': 'toto'
-                    }
+            'security_group_0': {
+                'type': 'OS::Neutron::SecurityGroup',
+                'properties': {
+                    'rules': [
+                        {
+                            'direction': 'ingress',
+                            'protocol': 'tcp',
+                            'ethertype': 'IPv4',
+                            'port_range_max': 65535,
+                            'port_range_min': 1,
+                            'remote_mode': 'remote_group_id'
+                        },
+                        {
+                            'ethertype': 'IPv4',
+                            'direction': 'egress'
+                        },
+                        {
+                            'ethertype': 'IPv6',
+                            'direction': 'egress'
+                        },
+                        {
+                            'direction': 'ingress',
+                            'protocol': 'tcp',
+                            'ethertype': 'IPv4',
+                            'port_range_max': 22,
+                            'port_range_min': 22,
+                            'remote_ip_prefix': '0.0.0.0/0'
+                        }
+                    ],
+                    'description': 'description',
+                    'name': 'toto'
                 }
             }
         }
-        generator._extract_secgroups()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_secgroups(), expected)
 
     def test_security_group_default(self):
         rules = [
@@ -1051,49 +907,43 @@ class NetworkTests(BaseTestCase):
         generator = self.get_generator(False, False, False)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'security_group_0': {
-                    'type': 'OS::Neutron::SecurityGroup',
-                    'properties': {
-                        'rules': [
-                            {
-                                'ethertype': 'IPv6',
-                                'direction': 'egress'
-                            },
-                            {
-                                'ethertype': 'IPv6',
-                                'direction': 'ingress',
-                                'remote_mode': 'remote_group_id'
-                            },
-                            {
-                                'direction': 'ingress',
-                                'protocol': 'tcp',
-                                'ethertype': 'IPv4',
-                                'port_range_max': 22,
-                                'port_range_min': 22,
-                                'remote_ip_prefix': '0.0.0.0/0'
-                            },
-                            {
-                                'ethertype': 'IPv4',
-                                'direction': 'egress'
-                            },
-                            {
-                                'ethertype': 'IPv4',
-                                'direction': 'ingress',
-                                'remote_mode': 'remote_group_id'
-                            }
-                        ],
-                        'description': 'default',
-                        'name': '_default'
-                    }
+            'security_group_0': {
+                'type': 'OS::Neutron::SecurityGroup',
+                'properties': {
+                    'rules': [
+                        {
+                            'ethertype': 'IPv6',
+                            'direction': 'egress'
+                        },
+                        {
+                            'ethertype': 'IPv6',
+                            'direction': 'ingress',
+                            'remote_mode': 'remote_group_id'
+                        },
+                        {
+                            'direction': 'ingress',
+                            'protocol': 'tcp',
+                            'ethertype': 'IPv4',
+                            'port_range_max': 22,
+                            'port_range_min': 22,
+                            'remote_ip_prefix': '0.0.0.0/0'
+                        },
+                        {
+                            'ethertype': 'IPv4',
+                            'direction': 'egress'
+                        },
+                        {
+                            'ethertype': 'IPv4',
+                            'direction': 'ingress',
+                            'remote_mode': 'remote_group_id'
+                        }
+                    ],
+                    'description': 'default',
+                    'name': '_default'
                 }
             }
         }
-        generator._extract_secgroups()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_secgroups(), expected)
 
     def test_security_groups(self):
         rules1 = [
@@ -1213,87 +1063,81 @@ class NetworkTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'security_group_0': {
-                    'type': 'OS::Neutron::SecurityGroup',
-                    'properties': {
-                        'rules': [
-                            {
-                                'remote_group_id': {
-                                    'get_resource': 'security_group_1'
-                                },
-                                'direction': 'ingress',
-                                'ethertype': 'IPv4',
-                                'remote_mode': 'remote_group_id'
+            'security_group_0': {
+                'type': 'OS::Neutron::SecurityGroup',
+                'properties': {
+                    'rules': [
+                        {
+                            'remote_group_id': {
+                                'get_resource': 'security_group_1'
                             },
-                            {
-                                'ethertype': 'IPv6',
-                                'direction': 'egress'
+                            'direction': 'ingress',
+                            'ethertype': 'IPv4',
+                            'remote_mode': 'remote_group_id'
+                        },
+                        {
+                            'ethertype': 'IPv6',
+                            'direction': 'egress'
+                        },
+                        {
+                            'ethertype': 'IPv4',
+                            'direction': 'egress'
+                        },
+                        {
+                            'remote_group_id': {
+                                'get_resource': 'security_group_1'
                             },
-                            {
-                                'ethertype': 'IPv4',
-                                'direction': 'egress'
+                            'direction': 'ingress',
+                            'protocol': 'icmp',
+                            'ethertype': 'IPv4',
+                            'remote_mode': 'remote_group_id'
+                        }
+                    ],
+                    'description': 'security_group_1',
+                    'name': 'security_group_1'
+                }
+            },
+            'security_group_1': {
+                'type': 'OS::Neutron::SecurityGroup',
+                'properties': {
+                    'rules': [
+                        {
+                            'remote_group_id': {
+                                'get_resource': 'security_group_0'
                             },
-                            {
-                                'remote_group_id': {
-                                    'get_resource': 'security_group_1'
-                                },
-                                'direction': 'ingress',
-                                'protocol': 'icmp',
-                                'ethertype': 'IPv4',
-                                'remote_mode': 'remote_group_id'
-                            }
-                        ],
-                        'description': 'security_group_1',
-                        'name': 'security_group_1'
-                    }
-                },
-                'security_group_1': {
-                    'type': 'OS::Neutron::SecurityGroup',
-                    'properties': {
-                        'rules': [
-                            {
-                                'remote_group_id': {
-                                    'get_resource': 'security_group_0'
-                                },
-                                'direction': 'ingress',
-                                'protocol': 'udp',
-                                'ethertype': 'IPv4',
-                                'port_range_max': 8888,
-                                'port_range_min': 7777,
-                                'remote_mode': 'remote_group_id'
+                            'direction': 'ingress',
+                            'protocol': 'udp',
+                            'ethertype': 'IPv4',
+                            'port_range_max': 8888,
+                            'port_range_min': 7777,
+                            'remote_mode': 'remote_group_id'
+                        },
+                        {
+                            'ethertype': 'IPv6',
+                            'direction': 'egress'
+                        },
+                        {
+                            'ethertype': 'IPv4',
+                            'direction': 'egress'
+                        },
+                        {
+                            'remote_group_id': {
+                                'get_resource': 'security_group_0'
                             },
-                            {
-                                'ethertype': 'IPv6',
-                                'direction': 'egress'
-                            },
-                            {
-                                'ethertype': 'IPv4',
-                                'direction': 'egress'
-                            },
-                            {
-                                'remote_group_id': {
-                                    'get_resource': 'security_group_0'
-                                },
-                                'direction': 'ingress',
-                                'protocol': 'tcp',
-                                'ethertype': 'IPv4',
-                                'port_range_max': 65535,
-                                'port_range_min': 1,
-                                'remote_mode': 'remote_group_id'
-                            }
-                        ],
-                        'description': 'security_group_2',
-                        'name': 'security_group_2'
-                    }
+                            'direction': 'ingress',
+                            'protocol': 'tcp',
+                            'ethertype': 'IPv4',
+                            'port_range_max': 65535,
+                            'port_range_min': 1,
+                            'remote_mode': 'remote_group_id'
+                        }
+                    ],
+                    'description': 'security_group_2',
+                    'name': 'security_group_2'
                 }
             }
         }
-        generator._extract_secgroups()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_secgroups(), expected)
 
 
 class VolumeTests(BaseTestCase):
@@ -1307,50 +1151,40 @@ class VolumeTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'size': 1
-                    }
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected)
 
     def test_source_volid_external(self):
         self.fake.volumes = [FakeVolume(source_volid=5678), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'volume_0_source_volid': {
-                    'description': 'Volume to create volume volume_0 from',
-                    'type': 'string'
-                }
-            },
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'source_volid': {'get_param': 'volume_0_source_volid'},
-                        'size': 1
-                    }
+        expected_parameters = {
+            'volume_0_source_volid': {
+                'description': 'Volume to create volume volume_0 from',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'source_volid': {'get_param': 'volume_0_source_volid'},
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
     def test_source_volid_included(self):
         self.fake.volumes = [FakeVolume(source_volid=5678),
@@ -1358,31 +1192,25 @@ class VolumeTests(BaseTestCase):
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'source_volid': {'get_resource': 'volume_1'},
-                        'size': 1
-                    }
-                },
-                'volume_1': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'size': 1
-                    }
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'source_volid': {'get_resource': 'volume_1'},
+                    'size': 1
+                }
+            },
+            'volume_1': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected)
 
     def test_image(self):
         metadata = {
@@ -1400,111 +1228,93 @@ class VolumeTests(BaseTestCase):
                                         volume_image_metadata=metadata), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'volume_0_image': {
-                    'default': '5c5c',
-                    'description': 'Image to create volume volume_0 from',
-                    'type': 'string'
-                }
-            },
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'image': {'get_param': 'volume_0_image'},
-                        'size': 1
-                    }
+        expected_parameters = {
+            'volume_0_image': {
+                'default': '5c5c',
+                'description': 'Image to create volume volume_0 from',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'image': {'get_param': 'volume_0_image'},
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
     def test_snapshot_id(self):
         self.fake.volumes = [FakeVolume(snapshot_id=5678), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'volume_0_snapshot_id': {
-                    'default': 5678,
-                    'description': 'Snapshot to create volume volume_0 from',
-                    'type': 'string'
-                }
-            },
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'snapshot_id': {'get_param': 'volume_0_snapshot_id'},
-                        'size': 1
-                    }
+        expected_parameters = {
+            'volume_0_snapshot_id': {
+                'default': 5678,
+                'description': 'Snapshot to create volume volume_0 from',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'snapshot_id': {'get_param': 'volume_0_snapshot_id'},
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
     def test_volume_type(self):
         self.fake.volumes = [FakeVolume(volume_type='isci'), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'volume_0_volume_type': {
-                    'description': 'Volume type for volume volume_0',
-                    'default': 'isci',
-                    'type': 'string'
-                }
-            },
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'volume_type': {'get_param': 'volume_0_volume_type'},
-                        'size': 1
-                    }
+        expected_parameters = {
+            'volume_0_volume_type': {
+                'description': 'Volume type for volume volume_0',
+                'default': 'isci',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
     def test_metadata(self):
         self.fake.volumes = [FakeVolume(metadata={'key': 'value'}), ]
         generator = self.get_generator(False, False, True)
 
         expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {},
-            'resources': {
-                'volume_0': {
-                    'type': 'OS::Cinder::Volume',
-                    'properties': {
-                        'name': 'vol1',
-                        'description': 'Description',
-                        'metadata': {'key': 'value'},
-                        'size': 1
-                    }
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
+                    'name': 'vol1',
+                    'description': 'Description',
+                    'metadata': {'key': 'value'},
+                    'size': 1
                 }
             }
         }
-        generator._extract_volumes()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_volumes(), expected)
 
 
 class ServerTests(BaseTestCase):
@@ -1517,70 +1327,62 @@ class ServerTests(BaseTestCase):
     def test_basic(self):
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'},
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
                 }
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_keypair(self):
         self.fake.servers = [FakeServer(key_name='testkey')]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'key_name': {'get_resource': 'key_0'},
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'},
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'key_name': {'get_resource': 'key_0'},
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
                 }
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_boot_from_volume(self):
         attachments = [{'device': 'vda',
@@ -1600,31 +1402,27 @@ class ServerTests(BaseTestCase):
 
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-            },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'block_device_mapping': [{'volume_id': {
-                            'get_resource': 'volume_0'}, 'device_name': 'vda'}]
-                    }
-                },
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'block_device_mapping': [{'volume_id': {
+                        'get_resource': 'volume_0'}, 'device_name': 'vda'}]
+                }
+            }
+        }
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_volume_attached(self):
         attachments = [{'device': '/dev/vdb',
@@ -1641,38 +1439,34 @@ class ServerTests(BaseTestCase):
         self.fake.servers = [FakeServer(**server_args), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'},
-                        'block_device_mapping': [{'volume_id': {
-                            'get_resource': 'volume_0'}, 'device_name':
-                            '/dev/vdb'}]
-                    }
-                },
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
+                    'block_device_mapping': [{'volume_id': {
+                        'get_resource': 'volume_0'}, 'device_name':
+                        '/dev/vdb'}]
+                }
+            },
+        }
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_security_groups(self):
         fake_neutron = FakeNeutronManager()
@@ -1684,119 +1478,99 @@ class ServerTests(BaseTestCase):
         self.fake.groups = {'server1': [FakeSecurityGroup(), ]}
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'security_group_0': {
-                    'type': 'OS::Neutron::SecurityGroup',
-                    'properties': {
-                        'description': 'Group',
-                        'name': 'group1',
-                        'rules': []
-                    }
-                },
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'security_groups': [
-                            {
-                                'get_resource': 'security_group_0'
-                            }
-                        ],
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'}
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'security_groups': [
+                        {
+                            'get_resource': 'security_group_0'
+                        }
+                    ],
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'}
                 }
             }
         }
         generator._extract_secgroups()
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_config_drive(self):
         self.fake.servers = [FakeServer(config_drive="True"), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'config_drive': 'True',
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'},
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'config_drive': 'True',
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
                 }
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_metadata(self):
         self.fake.servers = [FakeServer(metadata={"key": "value"}), ]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'metadata': {'key': 'value'},
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'},
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'metadata': {'key': 'value'},
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
                 }
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_networks(self):
         subnet = {
@@ -1817,37 +1591,33 @@ class ServerTests(BaseTestCase):
         self.fake.servers = [FakeServer(addresses=addresses)]
         generator = self.get_generator(False, False, True)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'networks': [
-                            {'network': {'get_resource': 'network_0'}}],
-                        'image': {'get_param': 'server_0_image'},
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'networks': [
+                        {'network': {'get_resource': 'network_0'}}],
+                    'image': {'get_param': 'server_0_image'},
                 }
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)
 
     def test_excluded_volume_attached(self):
         attachments = [{'device': '/dev/vdb',
@@ -1864,41 +1634,37 @@ class ServerTests(BaseTestCase):
         self.fake.servers = [FakeServer(**server_args), ]
         generator = self.get_generator(False, True, False)
 
-        expected = {
-            'heat_template_version': datetime.date(2013, 5, 23),
-            'description': 'Generated template',
-            'parameters': {
-                'server_0_flavor': {
-                    'default': 'm1.small',
-                    'description': 'Flavor to use for server server_0',
-                    'type': 'string'
-                },
-                'server_0_image': {
-                    'description': 'Image to use to boot server server_0',
-                    'default': '3333',
-                    'type': 'string'
-                },
-                'volume_server1_0': {
-                    'default': 5678,
-                    'description': 'Volume for server server1, device '
-                                   '/dev/vdb',
-                    'type': 'string'
-                }
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
             },
-            'resources': {
-                'server_0': {
-                    'type': 'OS::Nova::Server',
-                    'properties': {
-                        'name': 'server1',
-                        'diskConfig': 'MANUAL',
-                        'flavor': {'get_param': 'server_0_flavor'},
-                        'image': {'get_param': 'server_0_image'},
-                        'block_device_mapping': [{'volume_id': {
-                            'get_param': 'volume_server1_0'}, 'device_name':
-                            '/dev/vdb'}]
-                    }
+            'server_0_image': {
+                'description': 'Image to use to boot server server_0',
+                'default': '3333',
+                'type': 'string'
+            },
+            'volume_server1_0': {
+                'default': 5678,
+                'description': 'Volume for server server1, device '
+                               '/dev/vdb',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'server_0': {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': 'server1',
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
+                    'block_device_mapping': [{'volume_id': {
+                        'get_param': 'volume_server1_0'}, 'device_name':
+                        '/dev/vdb'}]
                 }
             }
         }
-        generator._extract_servers()
-        self.assertEqual(expected, generator.template)
+        self.check_template(generator._extract_servers(), expected_resources,
+                            expected_parameters)

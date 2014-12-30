@@ -46,6 +46,62 @@ resources:
 '''
 
 
+class Resource(object):
+    """Describes an OpenStack resource."""
+
+    def __init__(self, name, type, id=None, properties=None):
+        self.name = name
+        self.type = type
+        self.id = id
+        self.status = 'COMPLETE'
+        self.properties = properties or {}
+        self.parameters = {}
+
+    def add_parameter(self, name, description, parameter_type='string',
+                      constraints=None, default=None):
+        data = {
+            'type': parameter_type,
+            'description': description,
+        }
+
+        # (arezmerita) disable cause heat bug #1314240
+        # if constraints:
+        #    data['constraints'] = constraints
+        if default:
+            data['default'] = default
+
+        self.parameters[name] = data
+
+    @property
+    def template_resource(self):
+        return {
+            self.name: {
+                'type': self.type,
+                'properties': self.properties
+            }
+        }
+
+    @property
+    def template_parameter(self):
+        return self.parameters
+
+    @property
+    def stack_resource(self):
+        if self.id is None:
+            return {}
+        return {
+            self.name: {
+                'status': self.status,
+                'name': self.name,
+                'resource_data': {},
+                'resource_id': self.id,
+                'action': 'CREATE',
+                'type': self.type,
+                'metadata': {}
+            }
+        }
+
+
 class TemplateGenerator(object):
     template = None
     stack_data = None
@@ -118,147 +174,83 @@ class TemplateGenerator(object):
     def format_template(filename):
         return yaml.safe_dump(filename, default_flow_style=False)
 
-    def add_resource(self, name, status, resource_id, resource_type):
-        resource = {
-            name: {
-                'status': status,
-                'name': name,
-                'resource_data': {},
-                'resource_id': resource_id,
-                'action': 'CREATE',
-                'type': resource_type,
-                'metadata': {}
-            }
-        }
-        self.stack_data['resources'].update(resource)
-
-    def add_parameter(self, name, description, parameter_type,
-                      constraints=None, default=None):
-        parameter = {
-            name: {
-                'type': parameter_type,
-                'description': description,
-            }
-        }
-        # (arezmerita) disable cause heat bug #1314240
-        # if constraints:
-        #    parameter[name]['constraints'] = constraints
-        if default:
-            parameter[name]['default'] = default
-        self.template['parameters'].update(parameter)
-
-    def add_router_gateway_resource(self, router_resource_name, router):
+    def _extract_router_gateway(self, router_resource_name, router):
         router_external_network_name = ("%s_external_network" %
                                         router_resource_name)
-        router_gateway_name = "%s_gateway" % router_resource_name
-        resource_type = 'OS::Neutron::RouterGateway'
+        external_network = router['external_gateway_info']['network_id']
+        properties = {
+            'router_id': {'get_resource': router_resource_name},
+            'network_id': {'get_param': router_external_network_name}
+        }
+        resource = Resource("%s_gateway" % router_resource_name,
+                            'OS::Neutron::RouterGateway',
+                            "%s:%s" % (router['id'], external_network),
+                            properties)
+
         description = "Router external network"
         constraints = [{'custom_constraint': "neutron.network"}]
-        external_network = router['external_gateway_info']['network_id']
-        self.add_parameter(router_external_network_name, description,
-                           'string', constraints=constraints,
-                           default=external_network)
+        resource.add_parameter(router_external_network_name, description,
+                               constraints=constraints,
+                               default=external_network)
 
-        if self.generate_data:
-            resource_id = "%s:%s" % (router['id'], external_network)
-            self.add_resource(router_gateway_name,
-                              'COMPLETE',
-                              resource_id,
-                              resource_type)
+        return resource
 
-        resource = {
-            router_gateway_name: {
-                'type': resource_type,
-                'properties': {
-                    'router_id': {'get_resource': router_resource_name},
-                    'network_id': {'get_param': router_external_network_name}
-                }
-            }
-        }
-        self.template['resources'].update(resource)
-
-    def add_router_interface_resources(self, router_resource_name, ports):
+    def _extract_router_interfaces(self, router_resource_name, ports):
+        resources = []
         for n, port in enumerate(ports):
-            if port['device_owner'] == "network:router_interface":
-                port_resource_name = ("%s_interface_%d" %
-                                      (router_resource_name, n))
-                resource_type = 'OS::Neutron::RouterInterface'
-                subnet_resource_name = self.get_subnet_resource_name(
-                    port['fixed_ips'][0]['subnet_id'])
+            if port['device_owner'] != "network:router_interface":
+                continue
 
-                if self.generate_data:
-                    resource_id = ("%s:subnet_id=%s" %
-                                   (port['device_id'],
-                                    port['fixed_ips'][0]['subnet_id']))
-                    self.add_resource(port_resource_name, 'COMPLETE',
-                                      resource_id, resource_type)
-
-                resource = {
-                    port_resource_name: {
-                        'type': resource_type,
-                        'properties': {
-                            'subnet_id': {
-                                'get_resource': subnet_resource_name},
-                            'router_id': {
-                                'get_resource': router_resource_name}
-                        }
-                    }
-                }
-                self.template['resources'].update(resource)
+            resource_name = "%s_interface_%d" % (router_resource_name, n)
+            subnet_resource_name = self.get_subnet_resource_name(
+                port['fixed_ips'][0]['subnet_id'])
+            resource_id = ("%s:subnet_id=%s" %
+                           (port['device_id'],
+                            port['fixed_ips'][0]['subnet_id']))
+            properties = {
+                'subnet_id': {'get_resource': subnet_resource_name},
+                'router_id': {'get_resource': router_resource_name}
+            }
+            resource = Resource(resource_name, 'OS::Neutron::RouterInterface',
+                                resource_id, properties)
+            resources.append(resource)
+        return resources
 
     def _extract_routers(self):
+        resources = []
         for n, router in enumerate(self.routers):
-            router_resource_name = "router_%d" % n
-            resource_type = 'OS::Neutron::Router'
-            resource = {
-                router_resource_name: {
-                    'type': resource_type,
-                    'properties': {
-                        'name': router['name'],
-                        'admin_state_up': router['admin_state_up'],
-                    }
-                }
+            name = "router_%d" % n
+            properties = {
+                'name': router['name'],
+                'admin_state_up': router['admin_state_up'],
             }
+            resource = Resource(name, 'OS::Neutron::Router',
+                                router['id'], properties)
+            resources.append(resource)
 
-            if self.generate_data:
-                self.add_resource(router_resource_name,
-                                  'COMPLETE',
-                                  router['id'],
-                                  resource_type)
+            ports = self.neutron.router_interfaces_list(router)
+            resources += self._extract_router_interfaces(name, ports)
 
-            self.template['resources'].update(resource)
-            self.add_router_interface_resources(
-                router_resource_name,
-                self.neutron.router_interfaces_list(router))
             if router['external_gateway_info']:
-                self.add_router_gateway_resource(router_resource_name,
-                                                 router)
+                resources.append(self._extract_router_gateway(name, router))
+        return resources
 
     def _extract_networks(self):
+        resources = []
         for n, network in self.networks.values():
             if network['router:external']:
                 self.external_networks.append(network['id'])
                 continue
-            network_resource_name = "network_%d" % n
-            resource_type = 'OS::Neutron::Net'
 
-            if self.generate_data:
-                self.add_resource(network_resource_name,
-                                  'COMPLETE',
-                                  network['id'],
-                                  resource_type)
-
-            resource = {
-                network_resource_name: {
-                    'type': resource_type,
-                    'properties': {
-                        'name': network['name'],
-                        'admin_state_up': network['admin_state_up'],
-                        'shared': network['shared']
-                    }
-                }
+            properties = {
+                'name': network['name'],
+                'admin_state_up': network['admin_state_up'],
+                'shared': network['shared']
             }
-            self.template['resources'].update(resource)
+            resource = Resource("network_%d" % n, 'OS::Neutron::Net',
+                                network['id'], properties)
+            resources.append(resource)
+        return resources
 
     def get_network_resource_name(self, network_id):
         return "network_%d" % self.networks[network_id][0]
@@ -267,34 +259,26 @@ class TemplateGenerator(object):
         return "subnet_%d" % self.subnets[subnet_id][0]
 
     def _extract_subnets(self):
+        resources = []
         for n, subnet in self.subnets.values():
             if subnet['network_id'] in self.external_networks:
                 continue
-            subnet_resource_name = "subnet_%d" % n
-            resource_type = 'OS::Neutron::Subnet'
 
-            if self.generate_data:
-                self.add_resource(subnet_resource_name,
-                                  'COMPLETE',
-                                  subnet['id'],
-                                  resource_type)
             net_name = self.get_network_resource_name(subnet['network_id'])
-            resource = {
-                subnet_resource_name: {
-                    'type': resource_type,
-                    'properties': {
-                        'name': subnet['name'],
-                        'allocation_pools': subnet['allocation_pools'],
-                        'cidr': subnet['cidr'],
-                        'dns_nameservers': subnet['dns_nameservers'],
-                        'enable_dhcp': subnet['enable_dhcp'],
-                        'host_routes': subnet['host_routes'],
-                        'ip_version': subnet['ip_version'],
-                        'network_id': {'get_resource': net_name}
-                    }
-                }
+            properties = {
+                'name': subnet['name'],
+                'allocation_pools': subnet['allocation_pools'],
+                'cidr': subnet['cidr'],
+                'dns_nameservers': subnet['dns_nameservers'],
+                'enable_dhcp': subnet['enable_dhcp'],
+                'host_routes': subnet['host_routes'],
+                'ip_version': subnet['ip_version'],
+                'network_id': {'get_resource': net_name}
             }
-            self.template['resources'].update(resource)
+            resource = Resource("subnet_%d" % n, 'OS::Neutron::Subnet',
+                                subnet['id'], properties)
+            resources.append(resource)
+        return resources
 
     def _build_rules(self, rules):
         brules = []
@@ -317,57 +301,37 @@ class TemplateGenerator(object):
         return brules
 
     def _extract_secgroups(self):
+        resources = []
         for n, secgroup in self.secgroups.values():
-
-            resource_name = "security_group_%d" % n
-            resource_type = 'OS::Neutron::SecurityGroup'
-
             if secgroup['name'] == 'default' and self.generate_data:
                 continue
 
             if secgroup['name'] == "default":
                 secgroup['name'] = "_default"
 
-            if self.generate_data:
-                self.add_resource(resource_name, 'COMPLETE',
-                                  secgroup['id'], resource_type)
-
             rules = self._build_rules(secgroup['security_group_rules'])
-            resource = {
-                resource_name: {
-                    'type': resource_type,
-                    'properties': {
-                        'description': secgroup['description'],
-                        'name': secgroup['name'],
-                        'rules': rules,
-                    }
-                }
+            properties = {
+                'description': secgroup['description'],
+                'name': secgroup['name'],
+                'rules': rules,
             }
-            self.template['resources'].update(resource)
+            resource = Resource("security_group_%d" % n,
+                                'OS::Neutron::SecurityGroup',
+                                secgroup['id'],
+                                properties)
+            resources.append(resource)
+        return resources
 
     def _extract_keys(self):
+        resources = []
         for n, key in self.keys.values():
-            key_resource_name = "key_%d" % n
-            resource_type = 'OS::Nova::KeyPair'
+            properties = {'name': key.name, 'public_key': key.public_key}
+            resource = Resource("key_%d" % n, 'OS::Nova::KeyPair',
+                                key.id, properties)
+            resources.append(resource)
+        return resources
 
-            if self.generate_data:
-                self.add_resource(key_resource_name,
-                                  'COMPLETE',
-                                  key.id,
-                                  resource_type)
-
-            resource = {
-                key_resource_name: {
-                    'type': resource_type,
-                    'properties': {
-                        'name': key.name,
-                        'public_key': key.public_key
-                    }
-                }
-            }
-            self.template['resources'].update(resource)
-
-    def build_secgroups(self, server):
+    def build_secgroups(self, resource, server):
         security_groups = []
         server_secgroups = set(self.nova.server_security_group_list(server))
 
@@ -380,8 +344,8 @@ class TemplateGenerator(object):
                     description = ("Default security group for server %s" %
                                    server.name)
                     default = secgr.id
-                    self.add_parameter(param_name, description,
-                                       'string', default=default)
+                    resource.add_parameter(param_name, description,
+                                           default=default)
                     secgroup_default_parameter = {'get_param': param_name}
                 security_groups.append(secgroup_default_parameter)
             else:
@@ -406,20 +370,15 @@ class TemplateGenerator(object):
         return networks
 
     def _extract_servers(self):
+        resources = []
         for n, server in self.servers.values():
             resource_name = "server_%d" % n
-            resource_type = 'OS::Nova::Server'
-
-            if self.generate_data:
-                self.add_resource(resource_name,
-                                  'COMPLETE',
-                                  server.id,
-                                  resource_type)
-
             properties = {
                 'name': server.name,
                 'diskConfig': getattr(server, 'OS-DCF:diskConfig')
             }
+            resource = Resource(resource_name, 'OS::Nova::Server',
+                                server.id, properties)
 
             if server.config_drive:
                 properties['config_drive'] = server.config_drive
@@ -428,8 +387,8 @@ class TemplateGenerator(object):
             flavor_parameter_name = "%s_flavor" % resource_name
             description = "Flavor to use for server %s" % resource_name
             default = self.flavors[server.flavor['id']][1].name
-            self.add_parameter(flavor_parameter_name, description, 'string',
-                               default=default)
+            resource.add_parameter(flavor_parameter_name, description,
+                                   default=default)
             properties['flavor'] = {'get_param': flavor_parameter_name}
 
             # Image
@@ -438,9 +397,9 @@ class TemplateGenerator(object):
                 description = (
                     "Image to use to boot server %s" % resource_name)
                 constraints = [{'custom_constraint': "glance.image"}]
-                self.add_parameter(
-                    image_parameter_name, description, 'string',
-                    default=server.image['id'], constraints=constraints)
+                resource.add_parameter(image_parameter_name, description,
+                                       default=server.image['id'],
+                                       constraints=constraints)
                 properties['image'] = {'get_param': image_parameter_name}
 
             # Keypair
@@ -448,7 +407,7 @@ class TemplateGenerator(object):
                 resource_key = "key_%d" % self.keys[server.key_name][0]
                 properties['key_name'] = {'get_resource': resource_key}
 
-            security_groups = self.build_secgroups(server)
+            security_groups = self.build_secgroups(resource, server)
             if security_groups:
                 properties['security_groups'] = security_groups
 
@@ -477,79 +436,55 @@ class TemplateGenerator(object):
                     server_volumes.append(
                         {'volume_id': {'get_param': volume_parameter_name},
                          'device_name': device})
-                    self.add_parameter(volume_parameter_name, description,
-                                       'string', default=server_volume['id'])
+                    resource.add_parameter(volume_parameter_name, description,
+                                           default=server_volume['id'])
             if server_volumes:
                 properties['block_device_mapping'] = server_volumes
 
-            resource = {
-                resource_name: {
-                    'type': resource_type,
-                    'properties': properties
-                }
-            }
-            self.template['resources'].update(resource)
+            resources.append(resource)
+        return resources
 
     def _extract_floating(self):
+        resources = []
         for n, ip in enumerate(self.floatingips):
             ip_resource_name = "floatingip_%d" % n
             net_param_name = "external_network_for_floating_ip_%d" % n
-            resource_type = 'OS::Neutron::FloatingIP'
+            ip_properties = {
+                'floating_network_id': {'get_param': net_param_name}}
+            resource = Resource(ip_resource_name, 'OS::Neutron::FloatingIP',
+                                ip['id'], ip_properties)
 
-            if self.generate_data:
-                self.add_resource(ip_resource_name,
-                                  'COMPLETE',
-                                  ip['id'],
-                                  resource_type)
-
-            floating_resource = {
-                ip_resource_name: {
-                    'type': resource_type,
-                    'properties': {
-                        'floating_network_id': {'get_param': net_param_name}
-                    }
-                }
-            }
             description = "Network to allocate floating IP from"
             constraints = [{'custom_constraint': "neutron.network"}]
             default = ip['floating_network_id']
-            self.add_parameter(net_param_name, description, 'string',
-                               constraints=constraints, default=default)
+            resource.add_parameter(net_param_name, description,
+                                   constraints=constraints,
+                                   default=default)
+            resources.append(resource)
+
             if not self.exclude_servers and ip['port_id']:
                 device = self.ports[ip['port_id']][1]['device_id']
                 if device and self.servers[device]:
                     server = self.servers[device]
-                    resource_name = "floatingip_association_%d" % n
                     server_resource_name = "server_%d" % server[0]
-                    resource_type = 'OS::Nova::FloatingIPAssociation'
-                    resource = {
-                        resource_name: {
-                            'type': resource_type,
-                            'properties': {
-                                'floating_ip': {
-                                    'get_resource': ip_resource_name
-                                },
-                                'server_id': {
-                                    'get_resource': server_resource_name
-                                }
-                            }
-                        }
+                    properties = {
+                        'floating_ip': {'get_resource': ip_resource_name},
+                        'server_id': {'get_resource': server_resource_name}
                     }
-                    self.template['resources'].update(resource)
-            self.template['resources'].update(floating_resource)
+                    resource = Resource("floatingip_association_%d" % n,
+                                        'OS::Nova::FloatingIPAssociation',
+                                        None,
+                                        properties)
+                    resources.append(resource)
+        return resources
 
     def _extract_volumes(self):
+        resources = []
         for n, volume in self.volumes.values():
             resource_name = "volume_%d" % n
-            resource_type = 'OS::Cinder::Volume'
-
-            if self.generate_data:
-                self.add_resource(resource_name, 'COMPLETE',
-                                  volume.id, resource_type)
-
-            properties = {
-                'size': volume.size
-            }
+            properties = {'size': volume.size}
+            resource = Resource(resource_name, 'OS::Cinder::Volume',
+                                volume.id, properties)
             if volume.source_volid:
                 if volume.source_volid in self.volumes:
                     key = "volume_%d" % self.volumes[volume.source_volid][0]
@@ -558,24 +493,24 @@ class TemplateGenerator(object):
                     key = "%s_source_volid" % resource_name
                     description = (
                         "Volume to create volume %s from" % resource_name)
-                    self.add_parameter(key, description, 'string')
+                    resource.add_parameter(key, description)
                     properties['source_volid'] = {'get_param': key}
             if volume.bootable == 'true' and not volume.snapshot_id:
                 key = "%s_image" % resource_name
                 description = "Image to create volume %s from" % resource_name
                 constraints = [{'custom_constraint': "glance.image"}]
                 default = volume.volume_image_metadata['image_id']
-                self.add_parameter(key, description, 'string',
-                                   constraints=constraints,
-                                   default=default)
+                resource.add_parameter(key, description,
+                                       constraints=constraints,
+                                       default=default)
                 properties['image'] = {'get_param': key}
             if volume.snapshot_id:
                 key = "%s_snapshot_id" % resource_name
                 properties['snapshot_id'] = {'get_param': key}
                 description = (
                     "Snapshot to create volume %s from" % resource_name)
-                self.add_parameter(key, description, 'string',
-                                   default=volume.snapshot_id)
+                resource.add_parameter(key, description,
+                                       default=volume.snapshot_id)
             if volume.display_name:
                 properties['name'] = volume.display_name
             if volume.display_description:
@@ -585,29 +520,32 @@ class TemplateGenerator(object):
                 description = (
                     "Volume type for volume %s" % resource_name)
                 default = volume.volume_type
-                self.add_parameter(key, description, 'string', default=default)
+                resource.add_parameter(key, description, default=default)
                 properties['volume_type'] = {'get_param': key}
             if volume.metadata:
                 properties['metadata'] = volume.metadata
-            resource = {
-                resource_name: {
-                    'type': resource_type,
-                    'properties': properties
-                }
-            }
-            self.template['resources'].update(resource)
+
+            resources.append(resource)
+        return resources
 
     def extract_data(self):
-        self._extract_routers()
-        self._extract_networks()
-        self._extract_subnets()
-        self._extract_secgroups()
-        self._extract_floating()
-        self._extract_keys()
+        resources = self._extract_routers()
+        resources += self._extract_networks()
+        resources += self._extract_subnets()
+        resources += self._extract_secgroups()
+        resources += self._extract_floating()
+        resources += self._extract_keys()
+
         if not self.exclude_servers:
-            self._extract_servers()
+            resources += self._extract_servers()
         if not self.exclude_volumes:
-            self._extract_volumes()
+            resources += self._extract_volumes()
+
+        for resource in resources:
+            self.template['resources'].update(resource.template_resource)
+            self.template['parameters'].update(resource.template_parameter)
+            if self.generate_data:
+                self.stack_data['resources'].update(resource.stack_resource)
 
     def heat_template(self):
         return self.format_template(self.template)
