@@ -24,7 +24,7 @@
 
 import mock
 
-from flameclient.flame import TemplateGenerator  # noqa
+from flameclient import flame
 from flameclient.tests import base
 
 
@@ -153,6 +153,81 @@ class FakeCinderManager(object):
         return self.volumes
 
 
+class ResourceTestCase(base.TestCase):
+
+    def test_template_resource(self):
+        resource = flame.Resource('my-name',
+                                  'my-type',
+                                  properties='my-properties')
+
+        expected = {
+            'my-name': {
+                'type': 'my-type',
+                'properties': 'my-properties',
+            }
+        }
+        self.assertEqual(expected, resource.template_resource)
+
+    def test_stack_resource(self):
+        resource = flame.Resource('my-name', 'my-type', id='my-id')
+
+        expected = {
+            'my-name': {
+                'status': 'COMPLETE',
+                'name': 'my-name',
+                'resource_data': {},
+                'resource_id': 'my-id',
+                'type': 'my-type',
+                'metadata': {},
+                'action': 'CREATE'
+            }
+        }
+        self.assertEqual(expected, resource.stack_resource)
+
+    def test_empty_stack_resource(self):
+        resource = flame.Resource('my-name', 'my-type')
+        self.assertEqual({}, resource.stack_resource)
+
+    def test_add_parameter(self):
+        resource = flame.Resource('my-name', 'my-type')
+        resource.add_parameter('my-parameter', 'my-description')
+
+        expected = {
+            'my-parameter': {
+                'type': 'string',
+                'description': 'my-description'
+            }
+        }
+        self.assertEqual(expected, resource.template_parameter)
+
+    def test_add_parameter_with_type(self):
+        resource = flame.Resource('my-name', 'my-type')
+        resource.add_parameter('my-parameter', 'my-description',
+                               parameter_type='my-type')
+
+        expected = {
+            'my-parameter': {
+                'type': 'my-type',
+                'description': 'my-description'
+            }
+        }
+        self.assertEqual(expected, resource.template_parameter)
+
+    def test_add_parameter_with_default(self):
+        resource = flame.Resource('my-name', 'my-type')
+        resource.add_parameter('my-parameter', 'my-description',
+                               default='my-default')
+
+        expected = {
+            'my-parameter': {
+                'type': 'string',
+                'description': 'my-description',
+                'default': 'my-default'
+            }
+        }
+        self.assertEqual(expected, resource.template_parameter)
+
+
 class BaseTestCase(base.TestCase):
 
     def setUp(self):
@@ -171,7 +246,7 @@ class BaseTestCase(base.TestCase):
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes, generate_data):
-        generator = TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True)
         generator.extract_vm_details(exclude_servers, exclude_volumes,
                                      generate_data)
         return generator
