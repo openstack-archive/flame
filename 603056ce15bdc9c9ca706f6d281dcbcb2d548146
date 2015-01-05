@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Code-Review+2: Ala Rezmerita <ala.rezmerita@cloudwatt.com>
+Workflow+1: Ala Rezmerita <ala.rezmerita@cloudwatt.com>
+Submitted-by: Jenkins
+Submitted-at: Mon, 05 Jan 2015 12:50:48 +0000
+Reviewed-on: https://review.openstack.org/144900
+Project: stackforge/flame
+Branch: refs/heads/master
