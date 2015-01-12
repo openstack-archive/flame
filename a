@@ -1,0 +1,112 @@
+description: Generated template
+heat_template_version: 2013-05-23
+parameters:
+  server_0_flavor:
+    default: m1.tiny
+    description: Flavor to use for server server_0
+    type: string
+  server_0_image:
+    default: 21886c3f-dc84-4ded-8337-aa32a9ee10f7
+    description: Image to use to boot server server_0
+    type: string
+resources:
+  key_0:
+    properties:
+      name: cby
+      public_key: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC2GMidWgXcTNj6Ut381bUYJR4lOs5WyCqjdfUT19Vnil5iqS/ptmIfh0E7pC0MResaZWYjSleojtIYJDsNtK+qHmrAq9j4K9GQ/be6qOvkvjvlQ1ZKzAgmR/STCjSSvTaT3juFuKuht+73t24Kxfb4eqXMwkEIb3kWjGHi28jjn+fJoWOxiYlddwjcnFdxA3e12TAxKi1vrYMzEuLoarA43ww/u9Z2jWotEek/i56qZj4QOlhJzNc4d6RLAhIqxdr/Y4HoLk283NzkQO0PG4D3pK5bzU5Gt63pQn229a5ub6PFNfxDSEPQO7v3n7wgkYPHIqk++TUlsTSv/FIbsNL5
+        cby-key
+
+        '
+    type: OS::Nova::KeyPair
+  network_0:
+    properties:
+      admin_state_up: true
+      name: zz-run
+      shared: false
+    type: OS::Neutron::Net
+  network_1:
+    properties:
+      admin_state_up: true
+      name: zz-nsb
+      shared: false
+    type: OS::Neutron::Net
+  router_0:
+    properties:
+      admin_state_up: true
+      name: r1
+    type: OS::Neutron::Router
+  router_0_interface_0:
+    properties:
+      router_id:
+        get_resource: router_0
+      subnet_id:
+        get_resource: subnet_0
+    type: OS::Neutron::RouterInterface
+  security_group_0:
+    properties:
+      description: aa
+      name: _default
+      rules:
+      - direction: ingress
+        ethertype: IPv4
+        remote_mode: remote_group_id
+      - direction: egress
+        ethertype: IPv4
+      - direction: ingress
+        ethertype: IPv6
+        remote_mode: remote_group_id
+      - direction: egress
+        ethertype: IPv6
+    type: OS::Neutron::SecurityGroup
+  server_0:
+    properties:
+      diskConfig: MANUAL
+      flavor:
+        get_param: server_0_flavor
+      image:
+        get_param: server_0_image
+      name: vm00
+      networks:
+      - network:
+          get_resource: network_1
+      - network:
+          get_resource: network_0
+      security_groups:
+      - get_resource: security_group_0
+      - get_resource: security_group_0
+    type: OS::Nova::Server
+  subnet_0:
+    properties:
+      allocation_pools:
+      - end: 172.24.0.254
+        start: 172.24.0.2
+      cidr: 172.24.0.0/24
+      dns_nameservers:
+      - 172.17.17.17
+      enable_dhcp: true
+      host_routes: []
+      ip_version: 4
+      name: zz-run
+      network_id:
+        get_resource: network_0
+    type: OS::Neutron::Subnet
+  subnet_1:
+    properties:
+      allocation_pools:
+      - end: 172.25.0.254
+        start: 172.25.0.7
+      cidr: 172.25.0.0/24
+      dns_nameservers:
+      - 172.17.17.17
+      enable_dhcp: true
+      host_routes:
+      - destination: 2.2.2.0/24
+        nexthop: 172.25.0.1
+      - destination: 3.3.3.0/26
+        nexthop: 172.25.0.1
+      ip_version: 4
+      name: zz-nsb
+      network_id:
+        get_resource: network_1
+    type: OS::Neutron::Subnet
+
