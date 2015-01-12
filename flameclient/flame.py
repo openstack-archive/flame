@@ -103,8 +103,6 @@ class Resource(object):
 
 
 class TemplateGenerator(object):
-    template = None
-    stack_data = None
 
     def __init__(self, username, password, tenant_name, auth_url, insecure,
                  region_name=None):
