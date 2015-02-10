@@ -14,6 +14,7 @@
 
 import pbr.version
 
-
-__version__ = pbr.version.VersionInfo(
-    'flameclient').version_string()
+try:
+    __version__ = pbr.version.VersionInfo('flameclient').version_string()
+except Exception:
+    __version__ = 'unknown'
