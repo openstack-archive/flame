@@ -59,6 +59,10 @@ def main(args=None):
                              "server's certificate will not be verified "
                              "against any certificate authorities. This "
                              "option should be used with caution.")
+    parser.add_argument("--endpoint_type", type=str,
+                        default=os.environ.get("OS_ENDPOINT_TYPE",
+                                               "publicURL"),
+                        help="Defaults to env[OS_ENDPOINT_TYPE] or publicURL")
     parser.add_argument('--exclude-servers', action='store_true',
                         default=False,
                         help="Do not export in template server resources")
@@ -73,7 +77,8 @@ def main(args=None):
     args = parser.parse_args()
     template = flame.TemplateGenerator(args.username, args.password,
                                        args.project, args.auth_url,
-                                       args.insecure, region_name=args.region)
+                                       args.insecure, args.endpoint_type,
+                                       region_name=args.region)
     template.extract_vm_details(args.exclude_servers, args.exclude_volumes,
                                 args.generate_stack_data)
     template.extract_data()

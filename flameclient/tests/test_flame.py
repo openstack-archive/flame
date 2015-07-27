@@ -246,7 +246,7 @@ class BaseTestCase(base.TestCase):
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes, generate_data):
-        generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True)
+        generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True, 'publicURL')
         generator.extract_vm_details(exclude_servers, exclude_volumes,
                                      generate_data)
         return generator
