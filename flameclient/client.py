@@ -26,17 +26,12 @@ from flameclient.flame import TemplateGenerator  # noqa
 
 
 class Client(object):
-    def __init__(self, api_version, **kwargs):
-
-        username = kwargs.get('username')
-        password = kwargs.get('password')
-        tenant_name = kwargs.get('tenant_name')
-        auth_url = kwargs.get('auth_url')
-
-        insecure = kwargs.get('insecure')
-        self.template_generator = TemplateGenerator(username, password,
-                                                    tenant_name, auth_url,
-                                                    insecure)
+    def __init__(self, username, password, tenant_name, auth_url, **kwargs):
+        self.template_generator = TemplateGenerator(username=username,
+                                                    password=password,
+                                                    auth_url=auth_url,
+                                                    tenant_name=tenant_name,
+                                                    **kwargs)
 
     def generate(self, include_networks, include_instances, include_volumes):
         return self.template_generator.generate(include_networks,

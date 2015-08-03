@@ -104,8 +104,8 @@ class Resource(object):
 
 class TemplateGenerator(object):
 
-    def __init__(self, username, password, tenant_name, auth_url, insecure,
-                 endpoint_type, region_name=None):
+    def __init__(self, username, password, tenant_name, auth_url,
+                 insecure=False, endpoint_type='publicURL', region_name=None):
         self.generate_data = False
         self._setup_templates()
         self._setup_managers(username, password, tenant_name, auth_url,
