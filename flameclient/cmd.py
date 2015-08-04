@@ -27,7 +27,7 @@ from __future__ import print_function
 import argparse
 import os
 
-from flameclient import flame
+from flameclient import client
 
 
 def main(args=None):
@@ -75,10 +75,12 @@ def main(args=None):
                              "stack data file.")
 
     args = parser.parse_args()
-    template = flame.TemplateGenerator(args.username, args.password,
-                                       args.project, args.auth_url,
-                                       args.insecure, args.endpoint_type,
-                                       region_name=args.region)
+    flame = client.Client(args.username, args.password,
+                          args.project, args.auth_url,
+                          insecure=args.insecure,
+                          endpoint_type=args.endpoint_type,
+                          region_name=args.region)
+    template = flame.template_generator
     template.extract_vm_details(args.exclude_servers, args.exclude_volumes,
                                 args.generate_stack_data)
     template.extract_data()
