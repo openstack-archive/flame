@@ -52,6 +52,7 @@ Usage
                             option should be used with caution.
       --exclude-servers     Do not export in template server resources
       --exclude-volumes     Do not export in template volume resources
+      --exclude-keypairs    Do not export in template key pair resources
       --generate-stack-data
                             In addition to template, generate Heat stack data
                             file.

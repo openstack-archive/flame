@@ -69,6 +69,9 @@ def main(args=None):
     parser.add_argument('--exclude-volumes', action='store_true',
                         default=False,
                         help="Do not export in template volume resources")
+    parser.add_argument('--exclude-keypairs', action='store_true',
+                        default=False,
+                        help="Do not export in template key pair resources")
     parser.add_argument('--generate-stack-data', action='store_true',
                         default=False,
                         help="In addition to template, generate Heat "
@@ -81,7 +84,9 @@ def main(args=None):
                           endpoint_type=args.endpoint_type,
                           region_name=args.region)
     template = flame.template_generator
-    template.extract_vm_details(args.exclude_servers, args.exclude_volumes,
+    template.extract_vm_details(args.exclude_servers,
+                                args.exclude_volumes,
+                                args.exclude_keypairs,
                                 args.generate_stack_data)
     template.extract_data()
     print("### Heat Template ###")

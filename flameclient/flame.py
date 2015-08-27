@@ -135,9 +135,10 @@ class TemplateGenerator(object):
                                              region_name=region_name)
 
     def extract_vm_details(self, exclude_servers, exclude_volumes,
-                           generate_data):
+                           exclude_keypairs, generate_data):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
+        self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
 
         self.subnets = self.build_data(self.neutron.subnet_list())
@@ -148,9 +149,10 @@ class TemplateGenerator(object):
         self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
 
-        self.keys = dict(
-            (key.name, (index, key))
-            for index, key in enumerate(self.nova.keypair_list()))
+        if not exclude_keypairs:
+            self.keys = dict(
+                (key.name, (index, key))
+                for index, key in enumerate(self.nova.keypair_list()))
 
         if not exclude_servers:
             self.flavors = self.build_data(self.nova.flavor_list())
@@ -404,9 +406,18 @@ class TemplateGenerator(object):
                 properties['image'] = {'get_param': image_parameter_name}
 
             # Keypair
-            if server.key_name and server.key_name in self.keys:
-                resource_key = "key_%d" % self.keys[server.key_name][0]
-                properties['key_name'] = {'get_resource': resource_key}
+            if server.key_name:
+                if self.exclude_keypairs or server.key_name not in self.keys:
+                    key_parameter_name = "%s_key" % resource_name
+                    description = ("Key for server %s" % resource_name)
+                    constraints = [{'custom_constraint': "nova.keypair"}]
+                    resource.add_parameter(key_parameter_name, description,
+                                           default=server.key_name,
+                                           constraints=constraints)
+                    properties['key_name'] = {'get_param': key_parameter_name}
+                else:
+                    resource_key = "key_%d" % self.keys[server.key_name][0]
+                    properties['key_name'] = {'get_resource': resource_key}
 
             security_groups = self.build_secgroups(resource, server)
             if security_groups:
@@ -535,8 +546,9 @@ class TemplateGenerator(object):
         resources += self._extract_subnets()
         resources += self._extract_secgroups()
         resources += self._extract_floating()
-        resources += self._extract_keys()
 
+        if not self.exclude_keypairs:
+            resources += self._extract_keys()
         if not self.exclude_servers:
             resources += self._extract_servers()
         if not self.exclude_volumes:

@@ -43,7 +43,7 @@ class FakeVolume(FakeBase):
     snapshot_id = None
     display_name = 'vol1'
     display_description = 'Description'
-    volume_type = None
+    volume_type = 'fast'
     metadata = None
 
 
@@ -55,7 +55,7 @@ class FakeServer(FakeBase):
     image = {'id': '3333',
              'links': [{'href': 'http://p/7777/images/3333',
                         'rel': 'bookmark'}]}
-    key_name = None
+    key_name = 'testkey'
     addresses = []
     metadata = None
 
@@ -245,11 +245,12 @@ class BaseTestCase(base.TestCase):
         self.mock_cinder.stop()
         super(BaseTestCase, self).tearDown()
 
-    def get_generator(self, exclude_servers, exclude_volumes, generate_data):
+    def get_generator(self, exclude_servers, exclude_volumes,
+                      exclude_keypairs, generate_data):
         generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
                                             'publicURL')
         generator.extract_vm_details(exclude_servers, exclude_volumes,
-                                     generate_data)
+                                     exclude_keypairs, generate_data)
         return generator
 
     def check_stackdata(self, resources, expected_resources):
@@ -277,7 +278,7 @@ class StackDataTests(BaseTestCase):
 
     def test_keypair(self):
         self.mock_nova.return_value = FakeNovaManager()
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'key_0': {
@@ -294,7 +295,7 @@ class StackDataTests(BaseTestCase):
 
     def test_router(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'router_0': {
@@ -318,7 +319,7 @@ class StackDataTests(BaseTestCase):
                              'network_id': '8765',
                              'enable_snat': 'true'}}, ]
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'router_0': {
@@ -371,7 +372,7 @@ class StackDataTests(BaseTestCase):
                          'id': '1111'}, ]
 
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'router_0': {
@@ -397,7 +398,7 @@ class StackDataTests(BaseTestCase):
 
     def test_network(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'network_0': {
@@ -417,7 +418,7 @@ class StackDataTests(BaseTestCase):
         fake.networks[0]['router:external'] = True
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         self.check_stackdata(generator._extract_networks(), {})
 
@@ -436,7 +437,7 @@ class StackDataTests(BaseTestCase):
                          'id': '1111'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'subnet_0': {
@@ -462,7 +463,7 @@ class StackDataTests(BaseTestCase):
                              'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(True, False, True)
+        generator = self.get_generator(True, False, False, True)
 
         expected = {
             'floatingip_0': {
@@ -496,7 +497,7 @@ class StackDataTests(BaseTestCase):
                         'id': '1234'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'security_group_0': {
@@ -530,14 +531,14 @@ class StackDataTests(BaseTestCase):
                         'id': '1234'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         self.check_stackdata(generator._extract_secgroups(), {})
 
     def test_volume(self):
         self.mock_cinder.return_value = FakeCinderManager()
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'volume_0': {
@@ -555,7 +556,7 @@ class StackDataTests(BaseTestCase):
     def test_server(self):
         self.mock_nova.return_value = FakeNovaManager()
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'server_0': {
@@ -582,7 +583,7 @@ class StackDataTests(BaseTestCase):
         self.mock_neutron.return_value = fake_neutron
         self.mock_nova.return_value = fake_nova
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'server_0': {
@@ -602,7 +603,7 @@ class NetworkTests(BaseTestCase):
 
     def test_keypair(self):
         self.mock_nova.return_value = FakeNovaManager()
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'key_0': {
@@ -617,7 +618,7 @@ class NetworkTests(BaseTestCase):
 
     def test_router(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'router_0': {
@@ -639,7 +640,7 @@ class NetworkTests(BaseTestCase):
                              'network_id': '8765',
                              'enable_snat': 'true'}}, ]
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'router_0_external_network': {
@@ -698,7 +699,7 @@ class NetworkTests(BaseTestCase):
                          'id': '1111'}, ]
 
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'router_0': {
@@ -720,7 +721,7 @@ class NetworkTests(BaseTestCase):
 
     def test_network(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'network_0': {
@@ -739,7 +740,7 @@ class NetworkTests(BaseTestCase):
         fake.networks[0]['router:external'] = True
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         self.check_template(generator._extract_networks(), {})
 
@@ -758,7 +759,7 @@ class NetworkTests(BaseTestCase):
                          'id': '1111'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'subnet_0': {
@@ -789,7 +790,7 @@ class NetworkTests(BaseTestCase):
                              'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(True, False, False)
+        generator = self.get_generator(True, False, False, False)
 
         expected_parameters = {
             'external_network_for_floating_ip_0': {
@@ -870,7 +871,7 @@ class NetworkTests(BaseTestCase):
                         'id': '1234'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False)
+        generator = self.get_generator(False, False, False, False)
 
         expected = {
             'security_group_0': {
@@ -980,7 +981,7 @@ class NetworkTests(BaseTestCase):
                         'id': '1111'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False)
+        generator = self.get_generator(False, False, False, False)
 
         expected = {
             'security_group_0': {
@@ -1136,7 +1137,7 @@ class NetworkTests(BaseTestCase):
                         'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected = {
             'security_group_0': {
@@ -1224,29 +1225,42 @@ class VolumeTests(BaseTestCase):
         self.mock_cinder.return_value = self.fake
 
     def test_basic(self):
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
-        expected = {
+        expected_parameters = {
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'}
+        }
+
+        expected_resources = {
             'volume_0': {
                 'type': 'OS::Cinder::Volume',
                 'properties': {
                     'name': 'vol1',
                     'description': 'Description',
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
             }
         }
-        self.check_template(generator._extract_volumes(), expected)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
     def test_source_volid_external(self):
         self.fake.volumes = [FakeVolume(source_volid=5678), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'volume_0_source_volid': {
                 'description': 'Volume to create volume volume_0 from',
                 'type': 'string'
-            }
+            },
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'}
         }
         expected_resources = {
             'volume_0': {
@@ -1255,6 +1269,7 @@ class VolumeTests(BaseTestCase):
                     'name': 'vol1',
                     'description': 'Description',
                     'source_volid': {'get_param': 'volume_0_source_volid'},
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
             }
@@ -1265,15 +1280,29 @@ class VolumeTests(BaseTestCase):
     def test_source_volid_included(self):
         self.fake.volumes = [FakeVolume(source_volid=5678),
                              FakeVolume(id=5678)]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
-        expected = {
+        expected_parameters = {
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'
+            },
+            'volume_1_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_1',
+                'type': 'string'
+            }
+        }
+
+        expected_resources = {
             'volume_0': {
                 'type': 'OS::Cinder::Volume',
                 'properties': {
                     'name': 'vol1',
                     'description': 'Description',
                     'source_volid': {'get_resource': 'volume_1'},
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
             },
@@ -1282,11 +1311,13 @@ class VolumeTests(BaseTestCase):
                 'properties': {
                     'name': 'vol1',
                     'description': 'Description',
+                    'volume_type': {'get_param': 'volume_1_volume_type'},
                     'size': 1
                 }
             }
         }
-        self.check_template(generator._extract_volumes(), expected)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
     def test_image(self):
         metadata = {
@@ -1302,9 +1333,14 @@ class VolumeTests(BaseTestCase):
             'size': '25'}
         self.fake.volumes = [FakeVolume(bootable='true',
                                         volume_image_metadata=metadata), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'
+            },
             'volume_0_image': {
                 'default': '5c5c',
                 'description': 'Image to create volume volume_0 from',
@@ -1318,6 +1354,7 @@ class VolumeTests(BaseTestCase):
                     'name': 'vol1',
                     'description': 'Description',
                     'image': {'get_param': 'volume_0_image'},
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
             }
@@ -1327,12 +1364,17 @@ class VolumeTests(BaseTestCase):
 
     def test_snapshot_id(self):
         self.fake.volumes = [FakeVolume(snapshot_id=5678), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'volume_0_snapshot_id': {
                 'default': 5678,
                 'description': 'Snapshot to create volume volume_0 from',
+                'type': 'string'
+            },
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
                 'type': 'string'
             }
         }
@@ -1343,6 +1385,7 @@ class VolumeTests(BaseTestCase):
                     'name': 'vol1',
                     'description': 'Description',
                     'snapshot_id': {'get_param': 'volume_0_snapshot_id'},
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
             }
@@ -1352,7 +1395,7 @@ class VolumeTests(BaseTestCase):
 
     def test_volume_type(self):
         self.fake.volumes = [FakeVolume(volume_type='isci'), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -1377,20 +1420,29 @@ class VolumeTests(BaseTestCase):
 
     def test_metadata(self):
         self.fake.volumes = [FakeVolume(metadata={'key': 'value'}), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
-        expected = {
+        expected_parameters = {
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
             'volume_0': {
                 'type': 'OS::Cinder::Volume',
                 'properties': {
                     'name': 'vol1',
                     'description': 'Description',
                     'metadata': {'key': 'value'},
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
             }
         }
-        self.check_template(generator._extract_volumes(), expected)
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
 
 
 class ServerTests(BaseTestCase):
@@ -1401,7 +1453,7 @@ class ServerTests(BaseTestCase):
         self.mock_nova.return_value = self.fake
 
     def test_basic(self):
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1423,6 +1475,7 @@ class ServerTests(BaseTestCase):
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
@@ -1431,7 +1484,7 @@ class ServerTests(BaseTestCase):
 
     def test_keypair(self):
         self.fake.servers = [FakeServer(key_name='testkey')]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1454,6 +1507,7 @@ class ServerTests(BaseTestCase):
                     'key_name': {'get_resource': 'key_0'},
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
@@ -1476,7 +1530,7 @@ class ServerTests(BaseTestCase):
                                           bootable='true')]
         self.mock_cinder.return_value = fake_cinder
 
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1492,6 +1546,7 @@ class ServerTests(BaseTestCase):
                     'name': 'server1',
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
+                    'key_name': {'get_resource': 'key_0'},
                     'block_device_mapping': [{'volume_id': {
                         'get_resource': 'volume_0'}, 'device_name': 'vda'}]
                 }
@@ -1513,7 +1568,7 @@ class ServerTests(BaseTestCase):
         server_args = {"id": 777,
                        "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         self.fake.servers = [FakeServer(**server_args), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1535,6 +1590,7 @@ class ServerTests(BaseTestCase):
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'},
                     'block_device_mapping': [{'volume_id': {
                         'get_resource': 'volume_0'}, 'device_name':
                         '/dev/vdb'}]
@@ -1552,7 +1608,7 @@ class ServerTests(BaseTestCase):
                                 "description": "Group"}, ]
         self.mock_neutron.return_value = fake_neutron
         self.fake.groups = {'server1': [FakeSecurityGroup(), ]}
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1578,7 +1634,8 @@ class ServerTests(BaseTestCase):
                         }
                     ],
                     'flavor': {'get_param': 'server_0_flavor'},
-                    'image': {'get_param': 'server_0_image'}
+                    'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
@@ -1588,7 +1645,7 @@ class ServerTests(BaseTestCase):
 
     def test_config_drive(self):
         self.fake.servers = [FakeServer(config_drive="True"), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1611,6 +1668,7 @@ class ServerTests(BaseTestCase):
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
@@ -1619,7 +1677,7 @@ class ServerTests(BaseTestCase):
 
     def test_metadata(self):
         self.fake.servers = [FakeServer(metadata={"key": "value"}), ]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1642,6 +1700,7 @@ class ServerTests(BaseTestCase):
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
@@ -1665,7 +1724,7 @@ class ServerTests(BaseTestCase):
         self.mock_neutron.return_value = fake_neutron
         addresses = {"private": [{"addr": "10.0.0.2"}]}
         self.fake.servers = [FakeServer(addresses=addresses)]
-        generator = self.get_generator(False, False, True)
+        generator = self.get_generator(False, False, False, True)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1689,6 +1748,7 @@ class ServerTests(BaseTestCase):
                     'networks': [
                         {'network': {'get_resource': 'network_0'}}],
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
@@ -1708,7 +1768,7 @@ class ServerTests(BaseTestCase):
         server_args = {"id": 777,
                        "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         self.fake.servers = [FakeServer(**server_args), ]
-        generator = self.get_generator(False, True, False)
+        generator = self.get_generator(False, True, False, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1736,6 +1796,7 @@ class ServerTests(BaseTestCase):
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'},
                     'block_device_mapping': [{'volume_id': {
                         'get_param': 'volume_server1_0'}, 'device_name':
                         '/dev/vdb'}]
@@ -1744,3 +1805,533 @@ class ServerTests(BaseTestCase):
         }
         self.check_template(generator._extract_servers(), expected_resources,
                             expected_parameters)
+
+
+class GenerationTests(BaseTestCase):
+
+    def setUp(self):
+        super(GenerationTests, self).setUp()
+        self.mock_neutron.return_value = FakeNeutronManager()
+        self.mock_nova.return_value = FakeNovaManager()
+        self.mock_cinder.return_value = FakeCinderManager()
+
+    def test_generation(self):
+
+        generator = self.get_generator(False, False, False, True)
+
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
+            },
+            'server_0_image': {
+                'default': '3333',
+                'description': 'Image to use to boot server server_0',
+                'type': 'string'
+            },
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'key_0': {
+                'properties': {
+                    'name': 'testkey',
+                    'public_key': 'ssh-rsa XXXX'
+                },
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'properties': {
+                    'admin_state_up': True,
+                    'name': 'mynetwork',
+                    'shared': False
+                },
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'properties': {
+                    'admin_state_up': 'true',
+                    'name': 'myrouter'
+                },
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'properties': {
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'},
+                    'name': 'server1'
+                },
+                'type': 'OS::Nova::Server'
+            },
+            'volume_0': {
+                'properties': {
+                    'description': 'Description',
+                    'name': 'vol1',
+                    'size': 1,
+                    'volume_type': {'get_param': 'volume_0_volume_type'}
+                },
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+        generator.extract_data()
+        self.assertEqual(generator.template['resources'], expected_resources)
+        self.assertEqual(generator.template['parameters'], expected_parameters)
+        self.assertEqual(generator.stack_data['resources'], expected_data)
+
+    def test_generation_exclude_servers(self):
+
+        generator = self.get_generator(True, False, False, True)
+
+        expected_parameters = {
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'
+            }
+        }
+
+        expected_resources = {
+            'key_0': {
+                'properties': {
+                    'name': 'testkey',
+                    'public_key': 'ssh-rsa XXXX'
+                },
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'properties': {
+                    'admin_state_up': True,
+                    'name': 'mynetwork',
+                    'shared': False
+                },
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'properties': {
+                    'admin_state_up': 'true',
+                    'name': 'myrouter'
+                },
+                'type': 'OS::Neutron::Router'
+            },
+            'volume_0': {
+                'properties': {
+                    'description': 'Description',
+                    'name': 'vol1',
+                    'size': 1,
+                    'volume_type': {'get_param': 'volume_0_volume_type'}
+                },
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(generator.template['resources'], expected_resources)
+        self.assertEqual(generator.template['parameters'], expected_parameters)
+        self.assertEqual(generator.stack_data['resources'], expected_data)
+
+    def test_generation_exclude_volumes(self):
+
+        generator = self.get_generator(False, True, False, True)
+
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
+            },
+            'server_0_image': {
+                'default': '3333',
+                'description': 'Image to use to boot server server_0',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'key_0': {
+                'properties': {
+                    'name': 'testkey',
+                    'public_key': 'ssh-rsa XXXX'
+                },
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'properties': {
+                    'admin_state_up': True,
+                    'name': 'mynetwork',
+                    'shared': False
+                },
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'properties': {
+                    'admin_state_up': 'true',
+                    'name': 'myrouter'
+                },
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'properties': {
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_resource': 'key_0'},
+                    'name': 'server1'
+                },
+                'type': 'OS::Nova::Server'
+            },
+        }
+
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(generator.template['resources'], expected_resources)
+        self.assertEqual(generator.template['parameters'], expected_parameters)
+        self.assertEqual(generator.stack_data['resources'], expected_data)
+
+    def test_generation_exclude_keypairs(self):
+
+        generator = self.get_generator(False, False, True, True)
+
+        expected_parameters = {
+            'server_0_flavor': {
+                'default': 'm1.small',
+                'description': 'Flavor to use for server server_0',
+                'type': 'string'
+            },
+            'server_0_image': {
+                'default': '3333',
+                'description': 'Image to use to boot server server_0',
+                'type': 'string'
+            },
+            'server_0_key': {
+                'default': 'testkey',
+                'description': 'Key for server server_0',
+                'type': 'string'
+            },
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'
+            }
+        }
+        expected_resources = {
+            'network_0': {
+                'properties': {
+                    'admin_state_up': True,
+                    'name': 'mynetwork',
+                    'shared': False
+                },
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'properties': {
+                    'admin_state_up': 'true',
+                    'name': 'myrouter'
+                },
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'properties': {
+                    'diskConfig': 'MANUAL',
+                    'flavor': {'get_param': 'server_0_flavor'},
+                    'image': {'get_param': 'server_0_image'},
+                    'key_name': {'get_param': 'server_0_key'},
+                    'name': 'server1'
+                },
+                'type': 'OS::Nova::Server'
+            },
+            'volume_0': {
+                'properties': {
+                    'description': 'Description',
+                    'name': 'vol1',
+                    'size': 1,
+                    'volume_type': {'get_param': 'volume_0_volume_type'}
+                },
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        expected_data = {
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(generator.template['resources'], expected_resources)
+        self.assertEqual(generator.template['parameters'], expected_parameters)
+        self.assertEqual(generator.stack_data['resources'], expected_data)
+
+    def test_generation_exclude_servers_and_volumes(self):
+
+        generator = self.get_generator(True, True, False, True)
+
+        expected_parameters = {}
+        expected_resources = {
+            'key_0': {
+                'properties': {
+                    'name': 'testkey',
+                    'public_key': 'ssh-rsa XXXX'
+                },
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'properties': {
+                    'admin_state_up': True,
+                    'name': 'mynetwork',
+                    'shared': False
+                },
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'properties': {
+                    'admin_state_up': 'true',
+                    'name': 'myrouter'
+                },
+                'type': 'OS::Neutron::Router'
+            },
+        }
+
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            }
+        }
+        generator.extract_data()
+        self.assertEqual(generator.template['resources'], expected_resources)
+        self.assertEqual(generator.template['parameters'], expected_parameters)
+        self.assertEqual(generator.stack_data['resources'], expected_data)
+
+    def test_generation_exclude_servers_volumes_keypairs(self):
+
+        generator = self.get_generator(True, True, True, True)
+
+        expected_parameters = {}
+        expected_resources = {
+            'network_0': {
+                'properties': {
+                    'admin_state_up': True,
+                    'name': 'mynetwork',
+                    'shared': False
+                },
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'properties': {
+                    'admin_state_up': 'true',
+                    'name': 'myrouter'
+                },
+                'type': 'OS::Neutron::Router'
+            }
+        }
+        expected_data = {
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(generator.template['resources'], expected_resources)
+        self.assertEqual(generator.template['parameters'], expected_parameters)
+        self.assertEqual(generator.stack_data['resources'], expected_data)
