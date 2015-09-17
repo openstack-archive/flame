@@ -13,6 +13,7 @@ To use the CLI of flame::
                  [--os-auth-token OS_AUTH_TOKEN] [--insecure]
                  [--endpoint_type ENDPOINT_TYPE] [--exclude-servers]
                  [--exclude-volumes] [--exclude-keypairs] [--generate-stack-data]
+                 [--extract-ports]
 
     Heat template and data file generator
 
@@ -38,6 +39,7 @@ To use the CLI of flame::
       --generate-stack-data
                             In addition to template, generate Heat stack data
                             file.
+      --extract-ports       Export the tenant network ports
 
 
 Example
