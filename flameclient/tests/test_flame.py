@@ -262,11 +262,12 @@ class BaseTestCase(base.TestCase):
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes,
-                      exclude_keypairs, generate_data):
+                      exclude_keypairs, generate_data, extract_ports):
         generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
                                             'publicURL')
         generator.extract_vm_details(exclude_servers, exclude_volumes,
-                                     exclude_keypairs, generate_data)
+                                     exclude_keypairs, generate_data,
+                                     extract_ports)
         return generator
 
     def check_stackdata(self, resources, expected_resources):
@@ -320,7 +321,7 @@ class StackDataTests(BaseTestCase):
 
     def test_keypair(self):
         self.mock_nova.return_value = FakeNovaManager()
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'key_0': {
@@ -337,7 +338,7 @@ class StackDataTests(BaseTestCase):
 
     def test_router(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'router_0': {
@@ -360,8 +361,10 @@ class StackDataTests(BaseTestCase):
                          'external_gateway_info': {
                              'network_id': '8765',
                              'enable_snat': 'true'}}, ]
+        # This router has no port
+        fake.ports = []
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'router_0': {
@@ -414,7 +417,7 @@ class StackDataTests(BaseTestCase):
                          'id': '1111'}, ]
 
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'router_0': {
@@ -440,7 +443,7 @@ class StackDataTests(BaseTestCase):
 
     def test_network(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'network_0': {
@@ -460,7 +463,7 @@ class StackDataTests(BaseTestCase):
         fake.networks[0]['router:external'] = True
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         self.check_stackdata(generator._extract_networks(), {})
 
@@ -479,7 +482,7 @@ class StackDataTests(BaseTestCase):
                          'id': '1111'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'subnet_0': {
@@ -505,7 +508,7 @@ class StackDataTests(BaseTestCase):
                              'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(True, False, False, True)
+        generator = self.get_generator(True, False, False, True, False)
 
         expected = {
             'floatingip_0': {
@@ -539,7 +542,7 @@ class StackDataTests(BaseTestCase):
                         'id': '1234'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'security_group_0': {
@@ -573,14 +576,14 @@ class StackDataTests(BaseTestCase):
                         'id': '1234'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         self.check_stackdata(generator._extract_secgroups(), {})
 
     def test_volume(self):
         self.mock_cinder.return_value = FakeCinderManager()
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'volume_0': {
@@ -598,7 +601,7 @@ class StackDataTests(BaseTestCase):
     def test_server(self):
         self.mock_nova.return_value = FakeNovaManager()
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'server_0': {
@@ -625,7 +628,7 @@ class StackDataTests(BaseTestCase):
         self.mock_neutron.return_value = fake_neutron
         self.mock_nova.return_value = fake_nova
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'server_0': {
@@ -645,7 +648,7 @@ class NetworkTests(BaseTestCase):
 
     def test_keypair(self):
         self.mock_nova.return_value = FakeNovaManager()
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'key_0': {
@@ -660,7 +663,8 @@ class NetworkTests(BaseTestCase):
 
     def test_router(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, False, True)
+        self.mock_neutron.return_value.ports = []
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'router_0': {
@@ -675,6 +679,7 @@ class NetworkTests(BaseTestCase):
 
     def test_router_with_external_gateway(self):
         fake = FakeNeutronManager()
+        fake.ports = []
         fake.routers = [{'name': 'myrouter',
                          'id': '1234',
                          'admin_state_up': 'true',
@@ -682,7 +687,7 @@ class NetworkTests(BaseTestCase):
                              'network_id': '8765',
                              'enable_snat': 'true'}}, ]
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'router_0_external_network': {
@@ -741,7 +746,7 @@ class NetworkTests(BaseTestCase):
                          'id': '1111'}, ]
 
         self.mock_neutron.return_value = fake
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'router_0': {
@@ -763,7 +768,7 @@ class NetworkTests(BaseTestCase):
 
     def test_network(self):
         self.mock_neutron.return_value = FakeNeutronManager()
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'network_0': {
@@ -782,7 +787,7 @@ class NetworkTests(BaseTestCase):
         fake.networks[0]['router:external'] = True
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         self.check_template(generator._extract_networks(), {})
 
@@ -801,7 +806,7 @@ class NetworkTests(BaseTestCase):
                          'id': '1111'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'subnet_0': {
@@ -832,7 +837,7 @@ class NetworkTests(BaseTestCase):
                              'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(True, False, False, False)
+        generator = self.get_generator(True, False, False, False, False)
 
         expected_parameters = {
             'external_network_for_floating_ip_0': {
@@ -913,7 +918,7 @@ class NetworkTests(BaseTestCase):
                         'id': '1234'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, False)
+        generator = self.get_generator(False, False, False, False, False)
 
         expected = {
             'security_group_0': {
@@ -1023,7 +1028,7 @@ class NetworkTests(BaseTestCase):
                         'id': '1111'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, False)
+        generator = self.get_generator(False, False, False, False, False)
 
         expected = {
             'security_group_0': {
@@ -1179,7 +1184,7 @@ class NetworkTests(BaseTestCase):
                         'id': '2222'}, ]
         self.mock_neutron.return_value = fake
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected = {
             'security_group_0': {
@@ -1267,7 +1272,7 @@ class VolumeTests(BaseTestCase):
         self.mock_cinder.return_value = self.fake
 
     def test_basic(self):
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -1315,7 +1320,7 @@ class VolumeTests(BaseTestCase):
 
     def test_source_volid_external(self):
         self.fake.volumes = [FakeVolume(source_volid=5678), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_source_volid': {
@@ -1345,7 +1350,7 @@ class VolumeTests(BaseTestCase):
     def test_source_volid_included(self):
         self.fake.volumes = [FakeVolume(source_volid=5678),
                              FakeVolume(id=5678)]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -1398,7 +1403,7 @@ class VolumeTests(BaseTestCase):
             'size': '25'}
         self.fake.volumes = [FakeVolume(bootable='true',
                                         volume_image_metadata=metadata), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -1429,7 +1434,7 @@ class VolumeTests(BaseTestCase):
 
     def test_snapshot_id(self):
         self.fake.volumes = [FakeVolume(snapshot_id=5678), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_snapshot_id': {
@@ -1460,7 +1465,7 @@ class VolumeTests(BaseTestCase):
 
     def test_volume_type(self):
         self.fake.volumes = [FakeVolume(volume_type='isci'), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -1485,7 +1490,7 @@ class VolumeTests(BaseTestCase):
 
     def test_metadata(self):
         self.fake.volumes = [FakeVolume(metadata={'key': 'value'}), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -1518,7 +1523,7 @@ class ServerTests(BaseTestCase):
         self.mock_nova.return_value = self.fake
 
     def test_basic(self):
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1549,7 +1554,7 @@ class ServerTests(BaseTestCase):
 
     def test_keypair(self):
         self.fake.servers = [FakeServer(key_name='testkey')]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1595,7 +1600,7 @@ class ServerTests(BaseTestCase):
                                           bootable='true')]
         self.mock_cinder.return_value = fake_cinder
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1633,7 +1638,7 @@ class ServerTests(BaseTestCase):
         server_args = {"id": 777,
                        "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         self.fake.servers = [FakeServer(**server_args), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1673,7 +1678,7 @@ class ServerTests(BaseTestCase):
                                 "description": "Group"}, ]
         self.mock_neutron.return_value = fake_neutron
         self.fake.groups = {'server1': [FakeSecurityGroup(), ]}
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1710,7 +1715,7 @@ class ServerTests(BaseTestCase):
 
     def test_config_drive(self):
         self.fake.servers = [FakeServer(config_drive="True"), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1742,7 +1747,7 @@ class ServerTests(BaseTestCase):
 
     def test_metadata(self):
         self.fake.servers = [FakeServer(metadata={"key": "value"}), ]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1789,7 +1794,7 @@ class ServerTests(BaseTestCase):
         self.mock_neutron.return_value = fake_neutron
         addresses = {"private": [{"addr": "10.0.0.2"}]}
         self.fake.servers = [FakeServer(addresses=addresses)]
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1833,7 +1838,7 @@ class ServerTests(BaseTestCase):
         server_args = {"id": 777,
                        "os-extended-volumes:volumes_attached": [{'id': 5678}]}
         self.fake.servers = [FakeServer(**server_args), ]
-        generator = self.get_generator(False, True, False, False)
+        generator = self.get_generator(False, True, False, False, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1882,7 +1887,7 @@ class GenerationTests(BaseTestCase):
 
     def test_generation(self):
 
-        generator = self.get_generator(False, False, False, True)
+        generator = self.get_generator(False, False, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -1999,7 +2004,7 @@ class GenerationTests(BaseTestCase):
 
     def test_generation_exclude_servers(self):
 
-        generator = self.get_generator(True, False, False, True)
+        generator = self.get_generator(True, False, False, True, False)
 
         expected_parameters = {
             'volume_0_volume_type': {
@@ -2089,7 +2094,7 @@ class GenerationTests(BaseTestCase):
 
     def test_generation_exclude_volumes(self):
 
-        generator = self.get_generator(False, True, False, True)
+        generator = self.get_generator(False, True, False, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -2184,7 +2189,7 @@ class GenerationTests(BaseTestCase):
 
     def test_generation_exclude_keypairs(self):
 
-        generator = self.get_generator(False, False, True, True)
+        generator = self.get_generator(False, False, True, True, False)
 
         expected_parameters = {
             'server_0_flavor': {
@@ -2291,7 +2296,7 @@ class GenerationTests(BaseTestCase):
 
     def test_generation_exclude_servers_and_volumes(self):
 
-        generator = self.get_generator(True, True, False, True)
+        generator = self.get_generator(True, True, False, True, False)
 
         expected_parameters = {}
         expected_resources = {
@@ -2355,7 +2360,7 @@ class GenerationTests(BaseTestCase):
 
     def test_generation_exclude_servers_volumes_keypairs(self):
 
-        generator = self.get_generator(True, True, True, True)
+        generator = self.get_generator(True, True, True, True, False)
 
         expected_parameters = {}
         expected_resources = {
