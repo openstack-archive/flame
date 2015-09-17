@@ -76,6 +76,9 @@ def main(args=None):
                         default=False,
                         help="In addition to template, generate Heat "
                              "stack data file.")
+    parser.add_argument('--extract-ports', action='store_true',
+                        default=False,
+                        help="Export the tenant network ports")
 
     args = parser.parse_args()
     flame = client.Client(args.username, args.password,
@@ -87,7 +90,8 @@ def main(args=None):
     template.extract_vm_details(args.exclude_servers,
                                 args.exclude_volumes,
                                 args.exclude_keypairs,
-                                args.generate_stack_data)
+                                args.generate_stack_data,
+                                args.extract_ports)
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template())
