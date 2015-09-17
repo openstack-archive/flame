@@ -56,6 +56,7 @@ class Resource(object):
         self.status = 'COMPLETE'
         self.properties = properties or {}
         self.parameters = {}
+        self.depends_on = None
 
     def add_parameter(self, name, description, parameter_type='string',
                       constraints=None, default=None):
@@ -64,7 +65,6 @@ class Resource(object):
             'description': description,
         }
 
-        # (arezmerita) disable cause heat bug #1314240
         # if constraints:
         #    data['constraints'] = constraints
         if default:
@@ -74,12 +74,15 @@ class Resource(object):
 
     @property
     def template_resource(self):
-        return {
+        out = {
             self.name: {
                 'type': self.type,
                 'properties': self.properties
             }
         }
+        if self.depends_on:
+            out[self.name]['depends_on'] = self.depends_on
+        return out
 
     @property
     def template_parameter(self):
@@ -134,20 +137,34 @@ class TemplateGenerator(object):
                                              endpoint_type,
                                              region_name=region_name)
 
+    def order_ports(self):
+        for i, port in self.ports.values():
+            for fixed_ip in port['fixed_ips']:
+                ip_subnet = self.subnets[fixed_ip['subnet_id']][1]
+                pools = ip_subnet.get('allocation_pools')
+                if pools:
+                    pools_starts = [pool['start'] for pool in pools]
+                    if fixed_ip['ip_address'] in pools_starts:
+                        # Its the first port of the subnet
+                        ip_subnet['first_port'] = port
+
     def extract_vm_details(self, exclude_servers, exclude_volumes,
-                           exclude_keypairs, generate_data):
+                           exclude_keypairs, generate_data,
+                           extract_ports=False):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
+        self.extract_ports = extract_ports
 
         self.subnets = self.build_data(self.neutron.subnet_list())
         self.networks = self.build_data(self.neutron.network_list())
-        self.routers = self.neutron.router_list()
+        self.routers = self.build_data(self.neutron.router_list())
         self.secgroups = self.build_data(self.neutron.secgroup_list())
         self.floatingips = self.neutron.floatingip_list()
         self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
+        self.order_ports()
 
         if not exclude_keypairs:
             self.keys = dict(
@@ -221,7 +238,7 @@ class TemplateGenerator(object):
 
     def _extract_routers(self):
         resources = []
-        for n, router in enumerate(self.routers):
+        for n, router in self.routers.values():
             name = "router_%d" % n
             properties = {
                 'name': router['name'],
@@ -261,6 +278,22 @@ class TemplateGenerator(object):
     def get_subnet_resource_name(self, subnet_id):
         return "subnet_%d" % self.subnets[subnet_id][0]
 
+    def get_server_resource_name(self, device_id):
+        return "server_%d" % self.servers[device_id][0]
+
+    def get_router_resource_name(self, device_id):
+        return "router_%d" % self.routers[device_id][0]
+
+    def get_secgroup_resource_name(self, secgroup_id):
+        return "security_group_%d" % self.secgroups[secgroup_id][0]
+
+    def get_ports_for_server(self, server_id):
+        ports = []
+        for n, port in self.ports.values():
+            if port['device_id'] == server_id:
+                ports.append("port_%d" % n)
+        return ports
+
     def _extract_subnets(self):
         resources = []
         for n, subnet in self.subnets.values():
@@ -283,11 +316,73 @@ class TemplateGenerator(object):
             resources.append(resource)
         return resources
 
+    def _extract_ports(self):
+        resources = []
+        resources_dict = {}
+        for n, port in self.ports.values():
+            if port['device_owner'].startswith('compute:'):
+                # It's a server
+                pass
+            elif port['device_owner'].startswith('network:router_interface'):
+                # It's (probably) a router, skip it!
+                continue
+            else:
+                # We don't know what it is, skip it!
+                continue
+
+            net_name = self.get_network_resource_name(port['network_id'])
+            fixed_ips = [{u'subnet_id': {'get_resource':
+                                         self.get_subnet_resource_name(
+                                             ip['subnet_id'])
+                                         },
+                          u'ip_address': ip['ip_address']}
+                         for ip in port['fixed_ips']]
+            sec_groups = [{'get_resource': self.get_secgroup_resource_name(
+                           secgroup_id)}
+                          for secgroup_id in port['security_groups']]
+            properties = {
+                'network_id': {'get_resource': net_name},
+                'admin_state_up': port['admin_state_up'],
+                'fixed_ips': fixed_ips,
+                'mac_address': port['mac_address'],
+                'security_groups': sec_groups,
+                'device_owner': port['device_owner'],
+            }
+            if port['name'] != '':
+                # This port has a name
+                properties['name'] = port['name']
+
+            resource = Resource("port_%d" % n, 'OS::Neutron::Port',
+                                port['id'], properties)
+
+            # Ordering port creation
+            for fixed_ip in port['fixed_ips']:
+                ip_subnet = self.subnets[fixed_ip['subnet_id']][1]
+                subnet_first_port = ip_subnet.get('first_port')
+                if subnet_first_port and subnet_first_port != port:
+                    resource.first_port = subnet_first_port
+                else:
+                    resource.first_port = None
+
+            resources.append(resource)
+            resources_dict[port['id']] = resource
+
+        # Translate port to port name and add depends_on
+        for port_resource in resources:
+            if port_resource.first_port:
+                port_resource.depends_on = (resources_dict[
+                    port_resource.first_port['id']
+                ].name)
+
+        return resources
+
     def _build_rules(self, rules):
         brules = []
         for rule in rules:
             if rule['protocol'] == 'any':
                 del rule['protocol']
+                del rule['port_range_min']
+                del rule['port_range_max']
             rg_id = rule['remote_group_id']
             if rg_id is not None:
                 rule['remote_mode'] = "remote_group_id"
@@ -419,13 +514,19 @@ class TemplateGenerator(object):
                     resource_key = "key_%d" % self.keys[server.key_name][0]
                     properties['key_name'] = {'get_resource': resource_key}
 
-            security_groups = self.build_secgroups(resource, server)
-            if security_groups:
-                properties['security_groups'] = security_groups
+            if self.extract_ports:
+                ports = [{"port": {"get_resource": port}}
+                         for port in self.get_ports_for_server(server.id)]
+                if ports:
+                    properties['networks'] = ports
+            else:
+                security_groups = self.build_secgroups(resource, server)
+                if security_groups:
+                    properties['security_groups'] = security_groups
 
-            networks = self.build_networks(server.addresses)
-            if networks:
-                properties['networks'] = networks
+                networks = self.build_networks(server.addresses)
+                if networks:
+                    properties['networks'] = networks
 
             if server.metadata:
                 properties['metadata'] = server.metadata
@@ -474,20 +575,33 @@ class TemplateGenerator(object):
                                    default=default)
             resources.append(resource)
 
-            if not self.exclude_servers and ip['port_id']:
-                device = self.ports[ip['port_id']][1]['device_id']
-                if device and self.servers[device]:
-                    server = self.servers[device]
-                    server_resource_name = "server_%d" % server[0]
-                    properties = {
-                        'floating_ip': {'get_resource': ip_resource_name},
-                        'server_id': {'get_resource': server_resource_name}
-                    }
-                    resource = Resource("floatingip_association_%d" % n,
-                                        'OS::Nova::FloatingIPAssociation',
-                                        None,
-                                        properties)
-                    resources.append(resource)
+            if self.extract_ports and ip['port_id']:
+                port_number = self.ports[ip['port_id']][0]
+                port_resource_name = "port_%d" % port_number
+                properties = {
+                    'floatingip_id': {'get_resource': ip_resource_name},
+                    'port_id': {'get_resource': port_resource_name}
+                }
+                resource = Resource("floatingip_association_%d" % n,
+                                    'OS::Neutron::FloatingIPAssociation',
+                                    None,
+                                    properties)
+                resources.append(resource)
+            else:
+                if not self.exclude_servers and ip['port_id']:
+                    device = self.ports[ip['port_id']][1]['device_id']
+                    if device and self.servers[device]:
+                        server = self.servers[device]
+                        server_resource_name = "server_%d" % server[0]
+                        properties = {
+                            'floating_ip': {'get_resource': ip_resource_name},
+                            'server_id': {'get_resource': server_resource_name}
+                        }
+                        resource = Resource("floatingip_association_%d" % n,
+                                            'OS::Nova::FloatingIPAssociation',
+                                            None,
+                                            properties)
+                        resources.append(resource)
         return resources
 
     def _extract_volumes(self):
@@ -543,6 +657,8 @@ class TemplateGenerator(object):
     def extract_data(self):
         resources = self._extract_routers()
         resources += self._extract_networks()
+        if self.extract_ports:
+            resources += self._extract_ports()
         resources += self._extract_subnets()
         resources += self._extract_secgroups()
         resources += self._extract_floating()
