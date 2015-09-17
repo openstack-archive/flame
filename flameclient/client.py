@@ -34,11 +34,12 @@ class Client(object):
                                                     **kwargs)
 
     def generate(self, exclude_servers, exclude_volumes, exclude_keypairs,
-                 generate_stack_data):
+                 generate_stack_data, extract_ports=False):
         self.template_generator.extract_vm_details(exclude_servers,
                                                    exclude_volumes,
                                                    exclude_keypairs,
-                                                   generate_stack_data
+                                                   generate_stack_data,
+                                                   extract_ports
                                                    )
         self.template_generator.extract_data()
         return self.template_generator.heat_template_and_data()
