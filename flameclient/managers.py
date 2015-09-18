@@ -27,7 +27,7 @@ from keystoneclient.openstack.common.apiclient import (
     exceptions as keystone_exceptions)
 from keystoneclient.v2_0 import client as keystone_client
 from neutronclient.v2_0 import client as neutron_client
-from novaclient.v1_1 import client as nova_client
+from novaclient.v2 import client as nova_client
 
 
 class KeystoneManager(object):
@@ -67,7 +67,7 @@ class KeystoneManager(object):
         return catalog[service_type][0][endpoint_type]
 
     def get_project_id(self):
-        return self.client().tenant_id
+        return self.client().project_id
 
 
 class NeutronManager(object):
