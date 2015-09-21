@@ -4,4 +4,4 @@ source = flameclient
 omit = flameclient/tests/*,flameclient/openstack/*
 
 [report]
-ignore-errors = True
+ignore_errors = True
