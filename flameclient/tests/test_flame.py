@@ -121,6 +121,18 @@ class FakeNeutronManager(object):
     def floatingip_list(self):
         return self.floatingips
 
+    def pool_list(self):
+        return []
+
+    def health_monitor_list(self):
+        return []
+
+    def pool_member_list(self):
+        return []
+
+    def vip_list(self):
+        return []
+
 
 class FakeNovaManager(object):
 

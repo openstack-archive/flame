@@ -34,8 +34,9 @@ Usage
     usage: flame [-h] [--username USERNAME] [--password PASSWORD]
                  [--project PROJECT] [--region REGION] [--auth_url AUTH_URL]
                  [--insecure] [--endpoint_type ENDPOINT_TYPE] [--exclude-servers]
-                 [--exclude-volumes] [--exclude-keypairs] [--generate-stack-data]
-                 [--extract-ports] [--alter-allocation-pools]
+                 [--exclude-volumes] [--exclude-keypairs] [--exclude-lb]
+                 [--generate-stack-data] [--extract-ports]
+                 [--alter-allocation-pools]
 
     Heat template and data file generator
 
@@ -56,6 +57,7 @@ Usage
       --exclude-servers     Do not export in template server resources
       --exclude-volumes     Do not export in template volume resources
       --exclude-keypairs    Do not export in template key pair resources
+      --exclude-lb          Do not export load balancers
       --generate-stack-data
                             In addition to template, generate Heat stack data
                             file.

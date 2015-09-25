@@ -72,6 +72,9 @@ def main(args=None):
     parser.add_argument('--exclude-keypairs', action='store_true',
                         default=False,
                         help="Do not export in template key pair resources")
+    parser.add_argument('--exclude-lb', action='store_true',
+                        default=False,
+                        help="Do not export load balancers")
     parser.add_argument('--generate-stack-data', action='store_true',
                         default=False,
                         help="In addition to template, generate Heat "
@@ -100,7 +103,8 @@ def main(args=None):
                                 args.exclude_keypairs,
                                 args.generate_stack_data,
                                 args.extract_ports,
-                                args.alter_allocation_pools)
+                                args.alter_allocation_pools,
+                                args.exclude_lb)
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template())

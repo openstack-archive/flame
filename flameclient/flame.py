@@ -47,6 +47,42 @@ resources:
 '''
 
 
+class Anonymizer(object):
+
+    def __init__(self):
+        self.catalog = {}
+
+    def register(self, what, kind):
+        if isinstance(what, list):
+            return [self.register(n, kind) for n in what]
+        chapter = self.catalog.setdefault(kind, ({}, {}))
+        if what in chapter[0]:
+            return
+        short_name = "%s_%s" % (kind, len(chapter[0]) + 1)
+        chapter[0][short_name] = what
+        chapter[1][what] = short_name
+        return chapter
+
+    def anonymize(self, what, kind, with_get_resource=True):
+        if isinstance(what, list):
+            return [self.anonymize(n, kind) for n in what]
+        if with_get_resource:
+            return {'get_resource': self.catalog[kind][1][what]}
+        else:
+            return self.catalog[kind][1][what]
+
+    def unregister(self, what, kind):
+        if isinstance(what, list):
+            return [self.unregister(n, kind) for n in what]
+        else:
+            item = self.catalog[kind][1][what]
+            del self.catalog[kind][0][item]
+            del self.catalog[kind][1][what]
+
+    def name_of(self, what, kind):
+        return self.anonymize(what, kind, False)
+
+
 class Resource(object):
     """Describes an OpenStack resource."""
 
@@ -58,6 +94,7 @@ class Resource(object):
         self.properties = properties or {}
         self.parameters = {}
         self.depends_on = None
+        self.metadata = {}
 
     def add_parameter(self, name, description, parameter_type='string',
                       constraints=None, default=None):
@@ -102,7 +139,7 @@ class Resource(object):
                 'resource_id': self.id,
                 'action': 'CREATE',
                 'type': self.type,
-                'metadata': {}
+                'metadata': self.metadata,
             }
         }
 
@@ -112,6 +149,7 @@ class TemplateGenerator(object):
     def __init__(self, username, password, tenant_name, auth_url,
                  insecure=False, endpoint_type='publicURL', region_name=None):
         self.generate_data = False
+        self.anonymizer = Anonymizer()
         self._setup_templates()
         self._setup_managers(username, password, tenant_name, auth_url,
                              insecure, endpoint_type, region_name=region_name)
@@ -153,20 +191,35 @@ class TemplateGenerator(object):
     def extract_vm_details(self, exclude_servers, exclude_volumes,
                            exclude_keypairs, generate_data,
                            extract_ports=False,
-                           alter_allocation_pools=False):
+                           alter_allocation_pools=False,
+                           exclude_lb=False):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
         self.extract_ports = extract_ports
+        self.exclude_lb = not extract_ports or exclude_lb
         self.alter_allocation_pools = alter_allocation_pools
 
         self.subnets = self.build_data(self.neutron.subnet_list())
+        self.anonymizer.register(list(self.subnets.keys()), 'subnet')
+
         self.networks = self.build_data(self.neutron.network_list())
         self.routers = self.build_data(self.neutron.router_list())
         self.secgroups = self.build_data(self.neutron.secgroup_list())
         self.floatingips = self.neutron.floatingip_list()
         self.ports = self.build_data(self.neutron.port_list())
+
+        self.pools = self.neutron.pool_list()
+        self.anonymizer.register([p['id'] for p in self.pools], 'pool')
+
+        self.monitors = self.neutron.health_monitor_list()
+        self.anonymizer.register([p['id'] for p in self.monitors], 'monitor')
+
+        self.pool_members = self.neutron.pool_member_list()
+        self.anonymizer.register([p['id'] for p in self.pool_members],
+                                 'pool_member')
+
         self.external_networks = []
         self.order_ports()
 
@@ -383,6 +436,89 @@ class TemplateGenerator(object):
                         port_resource.first_port['id']
                     ].name)
 
+        return resources
+
+    def _extract_pool_members(self):
+        resources = []
+        for mbr in self.pool_members:
+            try:
+                pool_id = self.anonymizer.anonymize(mbr['pool_id'], 'pool')
+            except KeyError:
+                continue
+            properties = {
+                'admin_state_up': mbr['admin_state_up'],
+                'address': mbr['address'],
+                'pool_id': pool_id,
+                'protocol_port': mbr['protocol_port'],
+                'weight': mbr['weight'],
+            }
+            resource = Resource(self.anonymizer.name_of(mbr['id'],
+                                                        'pool_member'),
+                                'OS::Neutron::PoolMember',
+                                mbr['id'], properties)
+            resources.append(resource)
+        return resources
+
+    def _extract_health_monitors(self):
+        resources = []
+        for mon in self.monitors:
+            properties = {
+                'admin_state_up': mon['admin_state_up'],
+                'delay': mon['delay'],
+                'max_retries': mon['max_retries'],
+                'timeout': mon['timeout'],
+                'type': mon['type'],
+            }
+            if mon['type'].startswith('HTTP'):
+                properties['http_method'] = mon['http_method']
+                properties['expected_codes'] = mon['expected_codes']
+                properties['url_path'] = mon['url_path']
+            resource = Resource(self.anonymizer.name_of(mon['id'], 'monitor'),
+                                'OS::Neutron::HealthMonitor',
+                                mon['id'], properties)
+            resources.append(resource)
+        return resources
+
+    def _extract_pools(self):
+        resources = []
+        vips = self.build_data(self.neutron.vip_list())
+        for pool in self.pools:
+            if not pool['vip_id']:
+                self.anonymizer.unregister(pool['id'], 'pool')
+                continue
+            vip_source = vips[pool['vip_id']][1]
+            vip_prop = {
+                "protocol_port": vip_source['protocol_port'],
+                "description": vip_source['description'],
+                'subnet': self.anonymizer.anonymize(vip_source['subnet_id'],
+                                                    'subnet'),
+                "address": vip_source['address'],
+                "name": vip_source['name'],
+                "connection_limit": vip_source['connection_limit'],
+                "admin_state_up": vip_source['admin_state_up']
+            }
+            session_persistence = vip_source['session_persistence']
+            if session_persistence:
+                vip_prop["session_persistence"] = session_persistence
+            properties = {
+                'admin_state_up': pool['admin_state_up'],
+                'description': pool['description'],
+                'lb_method': pool['lb_method'],
+                'monitors': self.anonymizer.anonymize(pool['health_monitors'],
+                                                      "monitor"),
+                'name': pool['name'],
+                'protocol': pool['protocol'],
+                # # provider is available since Kilo
+                # 'provider': pool['provider'],
+                'subnet_id': self.anonymizer.anonymize(pool['subnet_id'],
+                                                       'subnet'),
+                'vip': vip_prop,
+            }
+            resource = Resource(self.anonymizer.name_of(pool['id'], 'pool'),
+                                'OS::Neutron::Pool',
+                                pool['id'], properties)
+            resource.metadata = {'vip': pool['vip_id']}
+            resources.append(resource)
         return resources
 
     def _build_rules(self, rules):
@@ -696,6 +832,10 @@ class TemplateGenerator(object):
         resources += self._extract_networks()
         if self.extract_ports:
             resources += self._extract_ports()
+        if not self.exclude_lb:
+            resources += self._extract_health_monitors()
+            resources += self._extract_pools()
+            resources += self._extract_pool_members()
 
         subnets = self._extract_subnets()
         if self.alter_allocation_pools:

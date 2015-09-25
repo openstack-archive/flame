@@ -115,84 +115,107 @@ class FakeNeutronManager(object):
              u'tenant_id': u'tenant1'},
         ]
 
-        self.ports = [{u'admin_state_up': True,
-                       u'allowed_address_pairs': [],
-                       u'binding:vnic_type': u'normal',
-                       u'device_id': u'router1',
-                       u'device_owner': u'network:router_interface',
-                       u'extra_dhcp_opts': [],
-                       u'fixed_ips': [{u'ip_address': u'192.168.203.1',
-                                       u'subnet_id': u'subnet3'}],
-                       u'id': u'port1',
-                       u'mac_address': u'fa:16:3e:fe:c1:b3',
-                       u'name': u'',
-                       u'network_id': u'network1',
-                       u'security_groups': [],
-                       u'status': u'ACTIVE',
-                       u'tenant_id': u'tenant1'},
-                      {u'admin_state_up': True,
-                       u'allowed_address_pairs': [],
-                       u'binding:vnic_type': u'normal',
-                       u'device_id': u'server3',
-                       u'device_owner': u'compute:nova',
-                       u'extra_dhcp_opts': [],
-                       u'fixed_ips': [{u'ip_address': u'192.168.203.5',
-                                       u'subnet_id': u'subnet3'}],
-                       u'id': u'port2',
-                       u'mac_address': u'fa:16:3e:e4:44:7b',
-                       u'name': u'',
-                       u'network_id': u'network1',
-                       u'security_groups': [u'secgorup1'],
-                       u'status': u'ACTIVE',
-                       u'tenant_id': u'tenant1'},
-                      {u'admin_state_up': True,
-                       u'allowed_address_pairs': [],
-                       u'binding:vnic_type': u'normal',
-                       u'device_id': u'server2',
-                       u'device_owner': u'compute:nova',
-                       u'extra_dhcp_opts': [],
-                       u'fixed_ips': [{u'ip_address': u'192.168.203.4',
-                                       u'subnet_id': u'subnet3'}],
-                       u'id': u'port3',
-                       u'mac_address': u'fa:16:3e:e8:e4:e2',
-                       u'name': u'',
-                       u'network_id': u'network1',
-                       u'security_groups': [u'secgorup1'],
-                       u'status': u'ACTIVE',
-                       u'tenant_id': u'tenant1'},
-                      {u'admin_state_up': True,
-                       u'allowed_address_pairs': [],
-                       u'binding:vnic_type': u'normal',
-                       u'device_id': u'dhcp1-network1',
-                       u'device_owner': u'network:dhcp',
-                       u'extra_dhcp_opts': [],
-                       u'fixed_ips': [{u'ip_address': u'192.168.203.3',
-                                       u'subnet_id': u'subnet3'},
-                                      {u'ip_address': u'192.168.204.2',
-                                       u'subnet_id': u'subnet4'}],
-                       u'id': u'port4',
-                       u'mac_address': u'fa:16:3e:af:86:30',
-                       u'name': u'',
-                       u'network_id': u'network1',
-                       u'security_groups': [],
-                       u'status': u'ACTIVE',
-                       u'tenant_id': u'tenant1'},
-                      {u'admin_state_up': True,
-                       u'allowed_address_pairs': [],
-                       u'binding:vnic_type': u'normal',
-                       u'device_id': u'server1',
-                       u'device_owner': u'compute:nova',
-                       u'extra_dhcp_opts': [],
-                       u'fixed_ips': [{u'ip_address': u'192.168.203.2',
-                                       u'subnet_id': u'subnet3'}],
-                       u'id': u'port6',
-                       u'mac_address': u'fa:16:3e:b0:9a:e2',
-                       u'name': u'',
-                       u'network_id': u'network1',
-                       u'security_groups': [u'secgorup1'],
-                       u'status': u'ACTIVE',
-                       u'tenant_id': u'tenant1'}
-                      ]
+        self.ports = [
+            {u'admin_state_up': True,
+             u'allowed_address_pairs': [],
+             u'binding:vnic_type': u'normal',
+             u'device_id': u'router1',
+             u'device_owner': u'network:router_interface',
+             u'extra_dhcp_opts': [],
+             u'fixed_ips': [{u'ip_address': u'192.168.203.1',
+                             u'subnet_id': u'subnet3'}],
+             u'id': u'port1',
+             u'mac_address': u'fa:16:3e:fe:c1:b3',
+             u'name': u'',
+             u'network_id': u'network1',
+             u'security_groups': [],
+             u'status': u'ACTIVE',
+             u'tenant_id': u'tenant1'},
+            {u'admin_state_up': True,
+             u'allowed_address_pairs': [],
+             u'binding:vnic_type': u'normal',
+             u'device_id': u'server3',
+             u'device_owner': u'compute:nova',
+             u'extra_dhcp_opts': [],
+             u'fixed_ips': [{u'ip_address': u'192.168.203.5',
+                             u'subnet_id': u'subnet3'}],
+             u'id': u'port2',
+             u'mac_address': u'fa:16:3e:e4:44:7b',
+             u'name': u'',
+             u'network_id': u'network1',
+             u'security_groups': [u'secgorup1'],
+             u'status': u'ACTIVE',
+             u'tenant_id': u'tenant1'},
+            {u'admin_state_up': True,
+             u'allowed_address_pairs': [],
+             u'binding:vnic_type': u'normal',
+             u'device_id': u'server2',
+             u'device_owner': u'compute:nova',
+             u'extra_dhcp_opts': [],
+             u'fixed_ips': [{u'ip_address': u'192.168.203.4',
+                             u'subnet_id': u'subnet3'}],
+             u'id': u'port3',
+             u'mac_address': u'fa:16:3e:e8:e4:e2',
+             u'name': u'',
+             u'network_id': u'network1',
+             u'security_groups': [u'secgorup1'],
+             u'status': u'ACTIVE',
+             u'tenant_id': u'tenant1'},
+            {u'admin_state_up': True,
+             u'allowed_address_pairs': [],
+             u'binding:vnic_type': u'normal',
+             u'device_id': u'dhcp1-network1',
+             u'device_owner': u'network:dhcp',
+             u'extra_dhcp_opts': [],
+             u'fixed_ips': [{u'ip_address': u'192.168.203.3',
+                             u'subnet_id': u'subnet3'},
+                            {u'ip_address': u'192.168.204.2',
+                             u'subnet_id': u'subnet4'}],
+             u'id': u'port4',
+             u'mac_address': u'fa:16:3e:af:86:30',
+             u'name': u'',
+             u'network_id': u'network1',
+             u'security_groups': [],
+             u'status': u'ACTIVE',
+             u'tenant_id': u'tenant1'},
+            {u'admin_state_up': True,
+             u'allowed_address_pairs': [],
+             u'binding:vnic_type': u'normal',
+             u'device_id': u'server1',
+             u'device_owner': u'compute:nova',
+             u'extra_dhcp_opts': [],
+             u'fixed_ips': [{u'ip_address': u'192.168.203.2',
+                             u'subnet_id': u'subnet3'}],
+             u'id': u'port6',
+             u'mac_address': u'fa:16:3e:b0:9a:e2',
+             u'name': u'',
+             u'network_id': u'network1',
+             u'security_groups': [u'secgorup1'],
+             u'status': u'ACTIVE',
+             u'tenant_id': u'tenant1'},
+            {"status": "ACTIVE",
+             "name": "vip-vip1",
+             "allowed_address_pairs": [],
+             "admin_state_up": True,
+             "network_id": "network1",
+             "tenant_id": "tenant1",
+             "extra_dhcp_opts": [],
+             "binding:vnic_type": "normal",
+             "device_owner": "neutron:LOADBALANCER",
+             "mac_address": "fa:16:3e:c5:03:c5",
+             "fixed_ips": [
+                 {
+                     "subnet_id": "subnet3",
+                     "ip_address": "192.168.203.15"
+                 }
+             ],
+             "id": "port7",
+             "security_groups": [
+                 "246ce138-2046-4fcf-9e84-67061a928da9"
+             ],
+             "device_id": "756b20b3-031a-5ad8-acaf-fdde1bdc286c"
+             }]
+
         self.subnets = [{u'allocation_pools': [
             {u'end': u'172.19.0.254', u'start': u'172.19.0.2'}],
             u'cidr': u'172.19.0.0/24',
@@ -301,6 +324,115 @@ class FakeNeutronManager(object):
                              u'status': u'DOWN',
                              u'tenant_id': u'tenant1'}]
 
+        self.pools = [{
+            "status": "ACTIVE",
+            "lb_method": "LEAST_CONNECTIONS",
+            "protocol": "TCP",
+            "description": "cot cot",
+            "health_monitors": [
+                "healthmonitor1"
+            ],
+            "subnet_id": "subnet3",
+            "tenant_id": "tenant1",
+            "admin_state_up": True,
+            "name": "une_poule",
+            "health_monitors_status": [
+                {
+                    "monitor_id": "healthmonitor1",
+                    "status": "ACTIVE",
+                    "status_description": None
+                }
+            ],
+            "members": [
+                "poolmember1"
+            ],
+            "provider": "haproxy",
+            "status_description": None,
+            "id": "pool1",
+            "vip_id": "vip1"
+        }
+        ]
+
+        self.pool_members = [{
+            "status": "INACTIVE",
+            "protocol_port": 22,
+            "weight": 8,
+            "admin_state_up": True,
+            "tenant_id": "tenant1",
+            "pool_id": "pool1",
+            "address": "192.168.100.2",
+            "status_description": None,
+            "id": "poolmember1"
+        }]
+
+        self.health_monitors = [
+            {"admin_state_up": True,
+             "tenant_id": "tenant1",
+             "delay": 10,
+             "max_retries": 2,
+             "timeout": 2,
+             "pools": [
+                 {
+                     "status": "ACTIVE",
+                     "status_description": None,
+                     "pool_id": "pool1"
+                 }
+             ],
+             "type": "PING",
+             "id": "healthmonitor1"
+             },
+            {"admin_state_up": True,
+             "tenant_id": "tenant1",
+             "delay": 9,
+             "expected_codes": "200",
+             "max_retries": 9,
+             "http_method": "GET",
+             "timeout": 9,
+             "pools": [],
+             "url_path": "/",
+             "type": "HTTPS",
+             "id": "healthmonitor2"
+             },
+            {"admin_state_up": True,
+             "tenant_id": "tenant1",
+             "delay": 12,
+             "max_retries": 3,
+             "timeout": 3,
+             "pools": [],
+             "type": "TCP",
+             "id": "healthmonitor3"
+             }]
+
+        self.vips = [{
+            "status": "ACTIVE",
+            "status_description": None,
+            "protocol": "TCP",
+            "description": "une main vip",
+            "admin_state_up": True,
+            "subnet_id": "subnet3",
+            "tenant_id": "tenant1",
+            "connection_limit": -1,
+            "pool_id": "pool1",
+            "session_persistence": None,
+            "address": "192.168.203.15",
+            "protocol_port": 22,
+            "port_id": "port7",
+            "id": "vip1",
+            "name": "Mainvip"
+        }]
+
+    def pool_list(self):
+        return self.pools
+
+    def health_monitor_list(self):
+        return self.health_monitors
+
+    def pool_member_list(self):
+        return self.pool_members
+
+    def vip_list(self):
+        return self.vips
+
     def subnet_list(self):
         return self.subnets
 
@@ -403,13 +535,15 @@ class BaseTestCase(base.TestCase):
 
     def get_generator(self, exclude_servers, exclude_volumes,
                       exclude_keypairs, generate_data, extract_ports,
-                      alter_dhcp_allocation_pools=False):
+                      alter_dhcp_allocation_pools=False,
+                      exclude_lb=False):
         generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
                                             'publicURL')
         generator.extract_vm_details(exclude_servers, exclude_volumes,
                                      exclude_keypairs, generate_data,
                                      extract_ports,
-                                     alter_dhcp_allocation_pools)
+                                     alter_dhcp_allocation_pools,
+                                     exclude_lb)
         return generator
 
     def check_stackdata(self, resources, expected_resources):
@@ -453,7 +587,7 @@ class StackDataTests(BaseTestCase):
         routers = (res for res in generator_output
                    if res.type == "OS::Neutron::Router")
         for n, router in enumerate(routers):
-            assert(router.name.startswith("router_"))
+            assert router.name.startswith("router_")
 
     def test_ports_presents(self):
         generator = self.get_generator(False, False, False, True, True)
@@ -467,11 +601,11 @@ class StackDataTests(BaseTestCase):
         extraction = generator._extract_ports()
         for n, port in enumerate(extraction):
             props = port.properties
-            assert(extraction[0].name.startswith("port_"))
+            assert extraction[0].name.startswith("port_")
             self.assertEqual("OS::Neutron::Port", port.type)
             self.assertIsInstance(props['admin_state_up'], bool)
             self.assertIsInstance(props['security_groups'], list)
-            assert(props['device_owner'].startswith("compute:"))
+            assert props['device_owner'].startswith("compute:")
 
     def test_port_fixed_ip(self):
         reference = [{'ip_address': '192.168.203.2',
@@ -496,7 +630,7 @@ class StackDataTests(BaseTestCase):
             self.assertIsInstance(props['networks'], list)
             for network in props['networks']:
                 port = network['port']['get_resource']
-                assert(port.startswith("port_"))
+                assert port.startswith("port_")
                 # Port has not been used by another server
                 self.assertNotIn(port, used_ports)
                 used_ports.append(port)
@@ -517,14 +651,90 @@ class StackDataTests(BaseTestCase):
     def test_floating_association(self):
         generator = self.get_generator(False, False, False, True, True)
         extraction = generator._extract_floating()
-        associations = (res for res in extraction
-                        if res.type == "OS::Neutron::FloatingIPAssociation")
+        associations = [res for res in extraction
+                        if res.type == "OS::Neutron::FloatingIPAssociation"]
+        assert len(associations) > 0, "No resource found"
         for association in associations:
             props = association.properties
-            assert(props['floatingip_id']['get_resource'].
-                   startswith('floatingip_'))
-            assert(props['port_id']['get_resource'].
-                   startswith('port_'))
+            assert (props['floatingip_id']['get_resource'].
+                    startswith('floatingip_'))
+            assert (props['port_id']['get_resource'].
+                    startswith('port_'))
+
+    def test_lb_pool(self):
+        generator = self.get_generator(False, False, False, True, True)
+        extraction = generator._extract_pools()
+        pools = [res for res in extraction
+                 if res.type == "OS::Neutron::Pool"]
+        assert len(pools) > 0, "No resource found"
+        for pool in pools:
+            props = pool.properties
+            self.assertIsInstance(props['admin_state_up'], bool)
+            self.assertIsInstance(props['monitors'], list)
+            self.assertIsInstance(props['name'], str)
+            # Provider was added in Liberty
+            # self.assertIn(props['provider'], ('haproxy',))
+            self.assertIn(props['protocol'], ('TCP', 'HTTP', 'HTTPS'))
+            self.assertIn(props['lb_method'], ('LEAST_CONNECTIONS',
+                                               'ROUND_ROBIN', 'SOURCE_IP'))
+            self.assertIsInstance(props['vip'], dict)
+            assert (props['subnet_id']['get_resource'].
+                    startswith('subnet_'))
+
+    def test_lb_vip(self):
+        generator = self.get_generator(False, False, False, True, True)
+        extraction = generator._extract_pools()
+        pools = [res for res in extraction
+                 if res.type == "OS::Neutron::Pool"]
+        assert len(pools) > 0, "No resource found"
+        for pool in pools:
+            vip = pool.properties['vip']
+            assert vip['address'].startswith('192.168.')
+            self.assertIsInstance(vip['admin_state_up'], bool)
+            self.assertIsInstance(vip['connection_limit'], int)
+            self.assertIsInstance(vip['description'], str)
+            self.assertIsInstance(vip['name'], str)
+            self.assertIsInstance(vip['protocol_port'], int)
+            if 'session_persistence' in vip:
+                self.assertIsInstance(vip['session_persistence'], dict)
+                self.assertIn(vip['session_persistence'], ('SOURCE_IP',
+                                                           'HTTP_COOKIE',
+                                                           'APP_COOKIE'))
+                if vip['session_persistence']['type'] == "APP_COOKIE":
+                    self.assertIsInstance(vip['cookie_name'], str)
+            assert vip['subnet']['get_resource'].startswith('subnet_')
+
+    def test_lb_health_mon(self):
+        generator = self.get_generator(False, False, False, True, True)
+        extraction = generator._extract_health_monitors()
+        monitors = [res for res in extraction
+                    if res.type == "OS::Neutron::HealthMonitor"]
+        assert len(monitors) > 0, "No resource found"
+        for monitor in monitors:
+            props = monitor.properties
+            self.assertIsInstance(props['delay'], int)
+            self.assertIsInstance(props['max_retries'], int)
+            self.assertIsInstance(props['timeout'], int)
+            self.assertIn(props['type'], ('PING', 'TCP', 'HTTP', 'HTTPS'))
+            if props['type'].startswith('HTTP'):
+                self.assertIsInstance(props['expected_codes'], str)
+                self.assertIsInstance(props['http_method'], str)
+                self.assertIsInstance(props['url_path'], str)
+
+    def test_lb_poolmember(self):
+        generator = self.get_generator(False, False, False, True, True)
+        extraction = generator._extract_pool_members()
+        members = [res for res in extraction
+                   if res.type == "OS::Neutron::PoolMember"]
+        assert len(members) > 0, "No resource found"
+        for member in members:
+            props = member.properties
+            self.assertIsInstance(props['admin_state_up'], bool)
+            assert props['address'].startswith('192.168.')
+            assert (props['pool_id']['get_resource'].
+                    startswith('pool_'))
+            self.assertIsInstance(props['protocol_port'], int)
+            self.assertIsInstance(props['weight'], int)
 
 
 class GenerationTests(BaseTestCase):
@@ -536,6 +746,10 @@ class GenerationTests(BaseTestCase):
                         'router_0_interface_0',
                         'router_0_gateway',
                         'key_0',
+                        'pool_1', 'pool_member_1',
+                        'monitor_1',
+                        'monitor_2',
+                        'monitor_3',
                         'network_0', 'network_1',
                         'floatingip_0', 'floatingip_1',
                         'floatingip_2', 'floatingip_3',
@@ -564,6 +778,10 @@ class GenerationTests(BaseTestCase):
                     'floatingip_3',
                     'floatingip_association_2',
                     'key_0',
+                    'pool_1', 'pool_member_1',
+                    'monitor_1',
+                    'monitor_2',
+                    'monitor_3',
                     'network_0', 'network_1',
                     'port_1', 'port_2', 'port_4',
                     'router_0',
@@ -612,10 +830,20 @@ class GenerationTests(BaseTestCase):
              'data_filter': ['^key', 'server_\d+_key']},
             # No ports
             {'call_params': (False, False, False, True, False),
-             'resource_filter': ['^port_\d+$'],
+             'resource_filter': ['^port_\d+$', '^pool_\d+$',
+                                 '^pool_member_\d+$', '^monitor_\d+$'],
              'params_filter': ['^port_\d+_default_security_group$',
                                'server_\d+_key$'],
-             'data_filter': ['^port_\d+', '^floatingip_association_\d+$']},
+             'data_filter': ['^port_\d+', '^floatingip_association_\d+$',
+                             '^pool_\d+$', '^pool_member_\d+$',
+                             '^monitor_\d+$']},
+            # No LB
+            {'call_params': (False, False, False, True, True, False, True),
+             'resource_filter': ['^pool_\d+$', '^pool_member_\d+$',
+                                 '^monitor_\d+$'],
+             'params_filter': ['^server_\d+_key$'],
+             'data_filter': ['^pool_\d+$', '^pool_member_\d+$',
+                             '^monitor_\d+$']}
         ]
 
         for exclusion in exclusion_table:
@@ -668,6 +896,48 @@ class GenerationTests(BaseTestCase):
                      'status': 'COMPLETE',
                      'type': 'OS::Neutron::Port'}
         self.assertEqual(reference, association_data)
+
+    def test_pool_data(self):
+        generator = self.get_generator(False, False, False, True, True)
+        generator.extract_data()
+        res_name = 'pool_1'
+        resiation_data = generator.stack_data['resources'][res_name]
+        reference = {'action': 'CREATE',
+                     'metadata': {'vip': 'vip1'},
+                     'name': 'pool_1',
+                     'resource_data': {},
+                     'resource_id': u'pool1',
+                     'status': 'COMPLETE',
+                     'type': 'OS::Neutron::Pool'}
+        self.assertEqual(reference, resiation_data)
+
+    def test_pool_member_data(self):
+        generator = self.get_generator(False, False, False, True, True)
+        generator.extract_data()
+        res_name = 'pool_member_1'
+        resiation_data = generator.stack_data['resources'][res_name]
+        reference = {'action': 'CREATE',
+                     'metadata': {},
+                     'name': 'pool_member_1',
+                     'resource_data': {},
+                     'resource_id': u'poolmember1',
+                     'status': 'COMPLETE',
+                     'type': 'OS::Neutron::PoolMember'}
+        self.assertEqual(reference, resiation_data)
+
+    def test_monitor_data(self):
+        generator = self.get_generator(False, False, False, True, True)
+        generator.extract_data()
+        res_name = 'monitor_1'
+        resiation_data = generator.stack_data['resources'][res_name]
+        reference = {'action': 'CREATE',
+                     'metadata': {},
+                     'name': 'monitor_1',
+                     'resource_data': {},
+                     'resource_id': u'healthmonitor1',
+                     'status': 'COMPLETE',
+                     'type': 'OS::Neutron::HealthMonitor'}
+        self.assertEqual(reference, resiation_data)
 
     def test_dhcp_pool_alteration(self):
         generator = self.get_generator(False, False, False, True, True, True)

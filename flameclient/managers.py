@@ -134,6 +134,22 @@ class NeutronManager(object):
         return filter(self._owned_resource,
                       self.client().list_subnets()['subnets'])
 
+    def pool_list(self):
+        return filter(self._owned_resource,
+                      self.client().list_pools()['pools'])
+
+    def pool_member_list(self):
+        return filter(self._owned_resource,
+                      self.client().list_members()['members'])
+
+    def vip_list(self):
+        return filter(self._owned_resource,
+                      self.client().list_vips()['vips'])
+
+    def health_monitor_list(self):
+        return filter(self._owned_resource,
+                      self.client().list_health_monitors()['health_monitors'])
+
     def _owned_resource(self, res):
         # Only considering resources owned by project
         return res['tenant_id'] == self._project_id
