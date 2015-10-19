@@ -1,6 +1,6 @@
-========
+=====
 Usage
-========
+=====
 
 To use install flame in a project::
 

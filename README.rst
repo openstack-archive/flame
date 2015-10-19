@@ -21,7 +21,7 @@ Installation
 
 First of all, clone the repository and go to the repository directory:
 
-        git clone https://github.com/stackforge/flame.git
+        git clone https://github.com/openstack/flame.git
         cd flame
 
 Then just run:
