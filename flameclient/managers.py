@@ -23,8 +23,7 @@
 # SOFTWARE.
 
 from cinderclient.v1 import client as cinder_client
-from keystoneclient.openstack.common.apiclient import (
-    exceptions as keystone_exceptions)
+from keystoneclient import exceptions as keystone_exceptions
 from keystoneclient.v2_0 import client as keystone_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
