@@ -238,11 +238,16 @@ class BaseTestCase(base.TestCase):
         self.mock_nova = self.patch_nova.start()
         self.patch_cinder = mock.patch('flameclient.managers.CinderManager')
         self.mock_cinder = self.patch_cinder.start()
+        self.patch_keystone = mock.patch(
+            'flameclient.managers.KeystoneManager'
+        )
+        self.mock_keystone = self.patch_keystone.start()
 
     def tearDown(self):
         self.mock_neutron.stop()
         self.mock_nova.stop()
         self.mock_cinder.stop()
+        self.mock_keystone.stop()
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes,

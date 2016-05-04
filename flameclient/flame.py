@@ -105,11 +105,12 @@ class Resource(object):
 class TemplateGenerator(object):
 
     def __init__(self, username, password, tenant_name, auth_url,
-                 insecure=False, endpoint_type='publicURL', region_name=None):
+                 auth_token=None, insecure=False, endpoint_type='publicURL',
+                 region_name=None):
         self.generate_data = False
         self._setup_templates()
         self._setup_managers(username, password, tenant_name, auth_url,
-                             insecure, endpoint_type, region_name=region_name)
+                             insecure, endpoint_type, region_name, auth_token)
 
     def _setup_templates(self):
         self.template = yaml.load(template_skeleton)
@@ -120,19 +121,20 @@ class TemplateGenerator(object):
         self.stack_data['resources'] = {}
 
     def _setup_managers(self, username, password, tenant_name, auth_url,
-                        insecure, endpoint_type, region_name=None):
-        self.neutron = managers.NeutronManager(username, password, tenant_name,
-                                               auth_url, insecure,
-                                               endpoint_type,
-                                               region_name=region_name)
-        self.nova = managers.NovaManager(username, password, tenant_name,
-                                         auth_url, insecure,
-                                         endpoint_type,
-                                         region_name=region_name)
-        self.cinder = managers.CinderManager(username, password, tenant_name,
-                                             auth_url, insecure,
-                                             endpoint_type,
-                                             region_name=region_name)
+                        insecure, endpoint_type, region_name=None,
+                        auth_token=None):
+        self.keystone = managers.KeystoneManager(
+            username, password,
+            tenant_name,
+            auth_url, insecure,
+            endpoint_type,
+            region_name=region_name,
+            auth_token=auth_token
+        )
+        self.keystone.authenticate()
+        self.neutron = managers.NeutronManager(self.keystone)
+        self.nova = managers.NovaManager(self.keystone)
+        self.cinder = managers.CinderManager(self.keystone)
 
     def extract_vm_details(self, exclude_servers, exclude_volumes,
                            exclude_keypairs, generate_data):
