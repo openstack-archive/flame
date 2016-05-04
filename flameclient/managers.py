@@ -34,7 +34,7 @@ class KeystoneManager(object):
     _client = None
 
     def __init__(self, username, password, project, auth_url, insecure,
-                 endpoint_type='publicURL', region_name=None):
+                 endpoint_type='publicURL', region_name=None, auth_token=None):
         self.username = username
         self.password = password
         self.project = project
@@ -42,6 +42,7 @@ class KeystoneManager(object):
         self.insecure = insecure
         self.region_name = region_name
         self.endpoint_type = endpoint_type
+        self.auth_token = auth_token
 
     def client(self):
         if not self._client:
@@ -52,7 +53,8 @@ class KeystoneManager(object):
                 auth_url=self.auth_url,
                 region_name=self.region_name,
                 insecure=self.insecure,
-                endpoint_type=self.endpoint_type)
+                endpoint_type=self.endpoint_type,
+                auth_token=self.auth_token)
         return self._client
 
     def set_client(self, client):
@@ -74,7 +76,7 @@ class NeutronManager(object):
     _project_id = None
 
     def __init__(self, username, password, project, auth_url, insecure,
-                 endpoint_type='publicURL', region_name=None):
+                 endpoint_type='publicURL', region_name=None, auth_token=None):
         self.username = username
         self.password = password
         self.project = project
@@ -82,6 +84,7 @@ class NeutronManager(object):
         self.insecure = insecure
         self.endpoint_type = endpoint_type
         self.region_name = region_name
+        self.auth_token = auth_token
 
     def client(self):
         if not self._client:
@@ -92,12 +95,15 @@ class NeutronManager(object):
                 auth_url=self.auth_url,
                 region_name=self.region_name,
                 insecure=self.insecure,
-                endpoint_type=self.endpoint_type)
+                endpoint_type=self.endpoint_type,
+                auth_token=self.auth_token)
+
         if not self._project_id:
             keystone_mgr = KeystoneManager(self.username, self.password,
                                            self.project, self.auth_url,
                                            self.insecure,
-                                           region_name=self.region_name)
+                                           region_name=self.region_name,
+                                           auth_token=self.auth_token)
             self._project_id = keystone_mgr.get_project_id()
         return self._client
 
@@ -143,7 +149,7 @@ class NovaManager(object):
     _client = None
 
     def __init__(self, username, password, project, auth_url, insecure,
-                 endpoint_type='publicURL', region_name=None):
+                 endpoint_type='publicURL', region_name=None, auth_token=None):
         self.username = username
         self.password = password
         self.project = project
@@ -151,6 +157,7 @@ class NovaManager(object):
         self.region_name = region_name
         self.insecure = insecure
         self.endpoint_type = endpoint_type
+        self.auth_token = auth_token
 
     def client(self):
         if not self._client:
@@ -159,7 +166,8 @@ class NovaManager(object):
                                               self.project, self.auth_url,
                                               region_name=self.region_name,
                                               insecure=self.insecure,
-                                              endpoint_type=self.endpoint_type)
+                                              endpoint_type=self.endpoint_type,
+                                              auth_token=self.auth_token)
         return self._client
 
     def set_client(self, client):
@@ -192,7 +200,7 @@ class CinderManager(object):
     _client = None
 
     def __init__(self, username, password, project, auth_url, insecure,
-                 endpoint_type='publicURL', region_name=None):
+                 endpoint_type='publicURL', region_name=None, auth_token=None):
         self.username = username
         self.password = password
         self.project = project
@@ -201,6 +209,7 @@ class CinderManager(object):
         self.insecure = insecure
         self.defined = True
         self.endpoint_type = endpoint_type
+        self.auth_token = auth_token
 
     def client(self):
         if self.defined and not self._client:
@@ -210,7 +219,8 @@ class CinderManager(object):
                                           self.auth_url,
                                           region_name=self.region_name,
                                           insecure=self.insecure,
-                                          endpoint_type=self.endpoint_type)
+                                          endpoint_type=self.endpoint_type,
+                                          auth_token=self.auth_token)
 
             # Check cinder endpoint existence
             try:
