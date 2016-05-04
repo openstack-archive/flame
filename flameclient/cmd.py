@@ -53,6 +53,10 @@ def main(args=None):
                         default=os.environ.get("OS_AUTH_URL"),
                         help="Authentication URL. "
                              "Defaults to env[OS_AUTH_URL].")
+    parser.add_argument("--os-auth-token", type=str,
+                        default=os.environ.get("OS_AUTH_TOKEN"),
+                        help="User's auth token. "
+                             "Defaults to env[OS_AUTH_TOKEN].")
     parser.add_argument('--insecure', action='store_true', default=False,
                         help="Explicitly allow clients to perform"
                              "\"insecure\" SSL (https) requests. The "
@@ -80,9 +84,10 @@ def main(args=None):
     args = parser.parse_args()
     flame = client.Client(args.username, args.password,
                           args.project, args.auth_url,
-                          insecure=args.insecure,
+                          args.os_auth_token,
+                          region_name=args.region,
                           endpoint_type=args.endpoint_type,
-                          region_name=args.region)
+                          insecure=args.insecure)
     template = flame.template_generator
     template.extract_vm_details(args.exclude_servers,
                                 args.exclude_volumes,

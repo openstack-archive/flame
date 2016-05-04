@@ -13,8 +13,9 @@ for Nova (key pairs and servers), Cinder (volumes) and Neutron (router,
 networks, subnets, security groups and floating IPs) resources.
 
 `flame` works as follows: using provided credentials (user name, project name,
-password, authentication url), the tool will list supported resources deployed
-in the project and will generate corresponding, highly customized HOT template.
+password or auth_token, authentication url), the tool will list supported
+resources deployed in the project and will generate corresponding, highly
+customized HOT template.
 
 Installation
 ------------
@@ -46,6 +47,8 @@ Usage
       --project PROJECT     Name of project. Defaults to env[OS_TENANT_NAME]
       --region REGION       Name of region. Defaults to env[OS_REGION_NAME]
       --auth_url AUTH_URL   Authentication URL. Defaults to env[OS_AUTH_URL].
+      --os-auth-token OS_AUTH_TOKEN
+                            User's auth token. Defaults to env[OS_AUTH_TOKEN].
       --insecure            Explicitly allow clients to perform"insecure" SSL
                             (https) requests. The server's certificate will not be
                             verified against any certificate authorities. This
@@ -67,3 +70,7 @@ To use Flame you can provide yours OpenStack credentials as arguments :
 
 
 Or you can source your OpenStack RC file and use Flame without arguments.
+
+Flame can be used with either a login and password pair or a keystone
+token by exporting the OS_AUTH_TOKEN variable (the token is obtained
+with keystone token-get).
