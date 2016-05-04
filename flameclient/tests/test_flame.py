@@ -24,6 +24,7 @@
 
 import mock
 
+from flameclient import client as flame_client
 from flameclient import flame
 from flameclient.tests import base
 
@@ -238,11 +239,16 @@ class BaseTestCase(base.TestCase):
         self.mock_nova = self.patch_nova.start()
         self.patch_cinder = mock.patch('flameclient.managers.CinderManager')
         self.mock_cinder = self.patch_cinder.start()
+        self.patch_keystone = mock.patch(
+            'flameclient.managers.KeystoneManager'
+        )
+        self.mock_keystone = self.patch_keystone.start()
 
     def tearDown(self):
         self.mock_neutron.stop()
         self.mock_nova.stop()
         self.mock_cinder.stop()
+        self.mock_keystone.stop()
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes,
@@ -272,6 +278,32 @@ class BaseTestCase(base.TestCase):
 
         self.assertEqual(expected_resources, merged_resources)
         self.assertEqual(expected_parameters, merged_parameters)
+
+
+class ClientTest(BaseTestCase):
+    def setUp(self):
+        super(ClientTest, self).setUp()
+        self.c = flame_client.Client('username', 'password', 'tenant_name',
+                                     'authUrl', 'auth_token')
+
+    def test_generate(self):
+        out = self.c.generate(False, False, False, True)
+        self.assertIsInstance(out, tuple)
+        self.assertIsNotNone(out[1])
+
+    def test_generate_no_stack_data(self):
+        out = self.c.generate(False, False, False, False)
+        self.assertIsInstance(out, tuple)
+        self.assertIsNotNone(out[0])
+        self.assertIsNone(out[1])
+
+    def test_generate_contains_extract(self):
+        generator = self.get_generator(False, False, False, True)
+        out = self.c.generate(False, False, False, True)
+        generator.extract_data()
+        stack_data = generator.stack_data_template()
+        heat_template = generator.heat_template()
+        self.assertEqual(out, (heat_template, stack_data))
 
 
 class StackDataTests(BaseTestCase):
