@@ -523,9 +523,10 @@ class TemplateGenerator(object):
                     "Snapshot to create volume %s from" % resource_name)
                 resource.add_parameter(key, description,
                                        default=volume.snapshot_id)
-            if volume.display_name:
+            if hasattr(volume, 'display_name') and volume.display_name:
                 properties['name'] = volume.display_name
-            if volume.display_description:
+            if (hasattr(volume, 'display_description') and
+               volume.display_description):
                 properties['description'] = volume.display_description
             if volume.volume_type and volume.volume_type != 'None':
                 key = "%s_volume_type" % resource_name
