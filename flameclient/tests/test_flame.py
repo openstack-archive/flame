@@ -48,6 +48,16 @@ class FakeVolume(FakeBase):
     metadata = None
 
 
+class FakeUnnamedVolume(FakeBase):
+    id = 1234
+    size = 1
+    source_volid = None
+    bootable = 'false'
+    snapshot_id = None
+    volume_type = 'fast'
+    metadata = None
+
+
 class FakeServer(FakeBase):
     id = '1234'
     name = 'server1'
@@ -1272,6 +1282,29 @@ class VolumeTests(BaseTestCase):
                 'properties': {
                     'name': 'vol1',
                     'description': 'Description',
+                    'volume_type': {'get_param': 'volume_0_volume_type'},
+                    'size': 1
+                }
+            }
+        }
+        self.check_template(generator._extract_volumes(), expected_resources,
+                            expected_parameters)
+
+    def test_basic_unnamed(self):
+        self.fake.volumes = [FakeUnnamedVolume(), ]
+        generator = self.get_generator(False, False, False, True)
+
+        expected_parameters = {
+            'volume_0_volume_type': {
+                'default': 'fast',
+                'description': 'Volume type for volume volume_0',
+                'type': 'string'}
+        }
+
+        expected_resources = {
+            'volume_0': {
+                'type': 'OS::Cinder::Volume',
+                'properties': {
                     'volume_type': {'get_param': 'volume_0_volume_type'},
                     'size': 1
                 }
