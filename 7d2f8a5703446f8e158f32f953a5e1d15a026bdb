@@ -1,0 +1,9 @@
+Code-Review+2: Cedric Brandily <zzelle@gmail.com>
+Code-Review+2: Ala Rezmerita <ala.rezmerita@orange.com>
+Workflow+1: Ala Rezmerita <ala.rezmerita@orange.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 17 May 2016 08:05:53 +0000
+Reviewed-on: https://review.openstack.org/316003
+Project: openstack/flame
+Branch: refs/heads/master
