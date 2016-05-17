@@ -1612,7 +1612,7 @@ class ServerTests(BaseTestCase):
                     'diskConfig': 'MANUAL',
                     'flavor': {'get_param': 'server_0_flavor'},
                     'key_name': {'get_resource': 'key_0'},
-                    'block_device_mapping': [{'volume_id': {
+                    'block_device_mapping_v2': [{'volume_id': {
                         'get_resource': 'volume_0'}, 'device_name': 'vda'}]
                 }
             }
@@ -1656,7 +1656,7 @@ class ServerTests(BaseTestCase):
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
                     'key_name': {'get_resource': 'key_0'},
-                    'block_device_mapping': [{'volume_id': {
+                    'block_device_mapping_v2': [{'volume_id': {
                         'get_resource': 'volume_0'}, 'device_name':
                         '/dev/vdb'}]
                 }
@@ -1862,7 +1862,7 @@ class ServerTests(BaseTestCase):
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
                     'key_name': {'get_resource': 'key_0'},
-                    'block_device_mapping': [{'volume_id': {
+                    'block_device_mapping_v2': [{'volume_id': {
                         'get_param': 'volume_server1_0'}, 'device_name':
                         '/dev/vdb'}]
                 }

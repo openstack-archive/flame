@@ -453,7 +453,9 @@ class TemplateGenerator(object):
                     resource.add_parameter(volume_parameter_name, description,
                                            default=server_volume['id'])
             if server_volumes:
-                properties['block_device_mapping'] = server_volumes
+                # block_device_mapping_v2 is the new way of associating
+                # block devices to an instance
+                properties['block_device_mapping_v2'] = server_volumes
 
             resources.append(resource)
         return resources
