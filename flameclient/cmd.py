@@ -83,8 +83,16 @@ def main(args=None):
     parser.add_argument('--extract-ports', action='store_true',
                         default=False,
                         help="Export the tenant network ports")
+    parser.add_argument('--alter-allocation-pools', action='store_true',
+                        default=False,
+                        help="Have the DHCP allocation pools start at the "
+                             "DHCP's IP address for the current subnet.")
 
     args = parser.parse_args()
+    if args.alter_allocation_pools and not args.extract_ports:
+        raise argparse.ArgumentError(None,
+                                     "Must use --extract-ports with "
+                                     "--alter-allocation-pools.")
     flame = client.Client(args.username, args.password,
                           args.project, args.auth_url,
                           args.os_auth_token,
@@ -96,7 +104,8 @@ def main(args=None):
                                 args.exclude_volumes,
                                 args.exclude_keypairs,
                                 args.generate_stack_data,
-                                args.extract_ports)
+                                args.extract_ports,
+                                args.alter_allocation_pools)
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template())

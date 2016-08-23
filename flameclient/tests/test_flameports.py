@@ -394,12 +394,14 @@ class BaseTestCase(base.TestCase):
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes,
-                      exclude_keypairs, generate_data, extract_ports):
+                      exclude_keypairs, generate_data, extract_ports,
+                      alter_dhcp_allocation_pools=False):
         generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
                                             'publicURL')
         generator.extract_vm_details(exclude_servers, exclude_volumes,
                                      exclude_keypairs, generate_data,
-                                     extract_ports)
+                                     extract_ports,
+                                     alter_dhcp_allocation_pools)
         return generator
 
     def check_stackdata(self, resources, expected_resources):
@@ -658,3 +660,35 @@ class GenerationTests(BaseTestCase):
                      'status': 'COMPLETE',
                      'type': 'OS::Neutron::Port'}
         self.assertEqual(reference, association_data)
+
+    def test_dhcp_pool_alteration(self):
+        generator = self.get_generator(False, False, False, True, True, True)
+        generator.extract_data()
+
+        subnets = [res['properties']
+                   for res in generator.template['resources'].values()
+                   if res['type'] == "OS::Neutron::Subnet"]
+        pools = {sn['name']: sn['allocation_pools'] for sn in subnets}
+        reference = {u'int-a-1': [{u'end': u'192.168.203.254',
+                                   u'start': u'192.168.203.3'}],
+                     u'int-a-2': [{u'end': u'192.168.204.254',
+                                   u'start': u'192.168.204.2'}],
+                     u'storage': [{u'end': u'172.19.0.254',
+                                   u'start': u'172.19.0.2'}]}
+        self.assertEqual(reference, pools)
+
+    def test_no_dhcp_pool_alteration(self):
+        generator = self.get_generator(False, False, False, True, True, False)
+        generator.extract_data()
+
+        subnets = [res['properties']
+                   for res in generator.template['resources'].values()
+                   if res['type'] == "OS::Neutron::Subnet"]
+        pools = {sn['name']: sn['allocation_pools'] for sn in subnets}
+        reference = {u'int-a-1': [{u'end': u'192.168.203.254',
+                                   u'start': u'192.168.203.2'}],
+                     u'int-a-2': [{u'end': u'192.168.204.254',
+                                   u'start': u'192.168.204.2'}],
+                     u'storage': [{u'end': u'172.19.0.254',
+                                   u'start': u'172.19.0.2'}]}
+        self.assertEqual(reference, pools)

@@ -15,4 +15,6 @@ When this stack is imported in Heat, the DHCP server IP is set to the lowest
 free IP address of its pool. Depending on the VM creation order, the DHCP
 address can either collide with vm1's or vm2's IP.
 
+Flame comes with an --alter-allocation-pools options that makes the allocation
+pool of a subnet start at the original DHCP's IP address.
 
