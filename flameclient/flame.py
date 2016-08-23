@@ -14,11 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from flameclient import managers
+
 import logging
 import netaddr
-import yaml
 import socket
-from flameclient import managers
+import yaml
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -143,12 +144,14 @@ class TemplateGenerator(object):
 
     def extract_vm_details(self, exclude_servers, exclude_volumes,
                            exclude_keypairs, generate_data,
-                           extract_ports=False):
+                           extract_ports=False,
+                           alter_allocation_pools=False):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
         self.extract_ports = extract_ports
+        self.alter_allocation_pools = alter_allocation_pools
 
         self.subnets = self.build_data(self.neutron.subnet_list())
         self.networks = self.build_data(self.neutron.network_list())
@@ -690,6 +693,19 @@ class TemplateGenerator(object):
             resources += self._extract_ports()
 
         subnets = self._extract_subnets()
+        if self.alter_allocation_pools:
+            for subnet in subnets:
+                pools = subnet.properties['allocation_pools']
+                fixed_ips = self.dhcp_fixed_ips.get(subnet.name, [])
+                for pool in pools:
+                    for ip in fixed_ips:
+                        start_n = socket.inet_aton(pool['start'])
+                        end_n = socket.inet_aton(pool['end'])
+                        ip_n = socket.inet_aton(ip)
+                        if start_n < ip_n <= end_n:
+                            # The DHCP IP address is in the pool, we make the
+                            # pool start at it's IP address
+                            pool['start'] = ip
         resources += subnets
 
         resources += self._extract_secgroups()
