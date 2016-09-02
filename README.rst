@@ -34,8 +34,9 @@ Usage
 
     usage: flame [-h] [--username USERNAME] [--password PASSWORD]
                  [--project PROJECT] [--region REGION] [--auth_url AUTH_URL]
-                 [--insecure] [--exclude-servers] [--exclude-volumes]
-                 [--generate-stack-data]
+                 [--os-auth-token OS_AUTH_TOKEN] [--insecure]
+                 [--endpoint_type ENDPOINT_TYPE] [--exclude-servers]
+                 [--exclude-volumes] [--exclude-keypairs] [--generate-stack-data]
 
     Heat template and data file generator
 
@@ -53,6 +54,8 @@ Usage
                             (https) requests. The server's certificate will not be
                             verified against any certificate authorities. This
                             option should be used with caution.
+      --endpoint_type ENDPOINT_TYPE
+                            Defaults to env[OS_ENDPOINT_TYPE] or publicURL
       --exclude-servers     Do not export in template server resources
       --exclude-volumes     Do not export in template volume resources
       --exclude-keypairs    Do not export in template key pair resources
