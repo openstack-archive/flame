@@ -41,9 +41,4 @@ class Client(object):
                                                    generate_stack_data
                                                    )
         self.template_generator.extract_data()
-        heat_template = self.template_generator.heat_template()
-        if generate_stack_data:
-            stack_data = self.template_generator.stack_data_template()
-        else:
-            stack_data = None
-        return (heat_template, stack_data)
+        return self.template_generator.heat_template_and_data()

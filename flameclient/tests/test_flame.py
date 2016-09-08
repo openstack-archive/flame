@@ -23,6 +23,7 @@
 # SOFTWARE.
 
 import mock
+import yaml
 
 from flameclient import client as flame_client
 from flameclient import flame
@@ -290,6 +291,29 @@ class BaseTestCase(base.TestCase):
         self.assertEqual(expected_parameters, merged_parameters)
 
 
+class TemplateGenerationTest(BaseTestCase):
+    def test_heat_template_and_data_with_data(self):
+        generator = self.get_generator(False, False, False, True)
+        generator.extract_data()
+        out = yaml.load(generator.heat_template_and_data())
+        mandatory_keys = set(('environment', 'template', 'resources',
+                              'action', 'status'))
+        self.assertEqual(mandatory_keys, set(out.keys()))
+        self.assertEqual(generator.template, out['template'])
+        del out['environment']
+        del out['template']
+        self.assertEqual(generator.stack_data, out)
+
+    def test_heat_template_and_data_without_data(self):
+        generator = self.get_generator(False, False, False, False)
+        generator.extract_data()
+        out = yaml.load(generator.heat_template_and_data())
+        mandatory_keys = {'heat_template_version', 'resources', 'description',
+                          'parameters'}
+        self.assertEqual(mandatory_keys, set(out.keys()))
+        self.assertEqual(generator.template, out)
+
+
 class ClientTest(BaseTestCase):
     def setUp(self):
         super(ClientTest, self).setUp()
@@ -298,22 +322,20 @@ class ClientTest(BaseTestCase):
 
     def test_generate(self):
         out = self.c.generate(False, False, False, True)
-        self.assertIsInstance(out, tuple)
-        self.assertIsNotNone(out[1])
+        parsed_out = yaml.load(out)
+        self.assertIsInstance(parsed_out, dict)
 
     def test_generate_no_stack_data(self):
         out = self.c.generate(False, False, False, False)
-        self.assertIsInstance(out, tuple)
-        self.assertIsNotNone(out[0])
-        self.assertIsNone(out[1])
+        parsed_out = yaml.load(out)
+        self.assertIsInstance(parsed_out, dict)
+        self.assertNotIn('template', parsed_out.keys())
 
     def test_generate_contains_extract(self):
-        generator = self.get_generator(False, False, False, True)
         out = self.c.generate(False, False, False, True)
-        generator.extract_data()
-        stack_data = generator.stack_data_template()
-        heat_template = generator.heat_template()
-        self.assertEqual(out, (heat_template, stack_data))
+        parsed_out = yaml.load(out)
+        self.assertIsInstance(parsed_out, dict)
+        self.assertIn('template', parsed_out.keys())
 
 
 class StackDataTests(BaseTestCase):

@@ -95,7 +95,4 @@ def main(args=None):
                                 args.generate_stack_data)
     template.extract_data()
     print("### Heat Template ###")
-    print(template.heat_template())
-    if args.generate_stack_data:
-        print("### Stack Data ###")
-        print(template.stack_data_template())
+    print(template.heat_template_and_data())
