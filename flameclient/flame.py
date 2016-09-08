@@ -570,3 +570,14 @@ class TemplateGenerator(object):
 
     def stack_data_template(self):
         return self.format_template(self.stack_data)
+
+    def heat_template_and_data(self):
+        if self.generate_data:
+            out = self.stack_data.copy()
+            out['template'] = self.template
+            out['environment'] = {"parameter_defaults": {},
+                                  "parameters": {}}
+
+            return self.format_template(out)
+        else:
+            return self.format_template(self.template)
