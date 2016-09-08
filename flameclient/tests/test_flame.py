@@ -92,6 +92,13 @@ class FakeSecurityGroup(FakeBase):
     name = 'name'
 
 
+class FakeServerGroup(FakeBase):
+    name = 'policy_group'
+    id = '1234'
+    policies = 'affinity'
+    members = []
+
+
 class FakeNeutronManager(object):
 
     def __init__(self):
@@ -141,6 +148,7 @@ class FakeNovaManager(object):
         self.groups = {}
         self.keypairs = [FakeKeypair(name='testkey',
                                      public_key='ssh-rsa XXXX')]
+        self.servergroups = [FakeServerGroup()]
 
     def keypair_list(self):
         return self.keypairs
@@ -153,6 +161,9 @@ class FakeNovaManager(object):
 
     def server_security_group_list(self, server):
         return self.groups.get(server.name, [])
+
+    def servergroup_list(self):
+        return self.servergroups
 
 
 class FakeCinderManager(object):
@@ -639,6 +650,23 @@ class StackDataTests(BaseTestCase):
             }
         }
         self.check_stackdata(generator._extract_servers(), expected)
+
+    def test_servergroup(self):
+        self.mock_nova.return_value = FakeNovaManager()
+        generator = self.get_generator(False, False, False, True)
+
+        expected = {
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
+            }
+        }
+        self.check_stackdata(generator._extract_servergroups(), expected)
 
 
 class NetworkTests(BaseTestCase):
@@ -1934,6 +1962,12 @@ class GenerationTests(BaseTestCase):
                 },
                 'type': 'OS::Nova::Server'
             },
+            'servergroup_0': {
+                'properties': {
+                    'name': 'policy_group',
+                    'policies': 'affinity'},
+                'type': 'OS::Nova::ServerGroup'
+            },
             'volume_0': {
                 'properties': {
                     'description': 'Description',
@@ -1981,6 +2015,15 @@ class GenerationTests(BaseTestCase):
                 'resource_id': '1234',
                 'status': 'COMPLETE',
                 'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
             },
             'volume_0': {
                 'action': 'CREATE',
@@ -2032,6 +2075,13 @@ class GenerationTests(BaseTestCase):
                 },
                 'type': 'OS::Neutron::Router'
             },
+            'servergroup_0': {
+                'properties': {
+                    'name': 'policy_group',
+                    'policies': 'affinity'
+                },
+                'type': 'OS::Nova::ServerGroup'
+            },
             'volume_0': {
                 'properties': {
                     'description': 'Description',
@@ -2070,6 +2120,15 @@ class GenerationTests(BaseTestCase):
                 'resource_id': '1234',
                 'status': 'COMPLETE',
                 'type': 'OS::Neutron::Router'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
             },
             'volume_0': {
                 'action': 'CREATE',
@@ -2136,6 +2195,12 @@ class GenerationTests(BaseTestCase):
                 },
                 'type': 'OS::Nova::Server'
             },
+            'servergroup_0': {
+                'properties': {
+                    'name': 'policy_group',
+                    'policies': 'affinity'},
+                'type': 'OS::Nova::ServerGroup'
+            }
         }
 
         expected_data = {
@@ -2174,6 +2239,15 @@ class GenerationTests(BaseTestCase):
                 'resource_id': '1234',
                 'status': 'COMPLETE',
                 'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
             }
         }
 
@@ -2234,6 +2308,13 @@ class GenerationTests(BaseTestCase):
                 },
                 'type': 'OS::Nova::Server'
             },
+            'servergroup_0': {
+                'properties': {
+                    'name': 'policy_group',
+                    'policies': 'affinity'
+                },
+                'type': 'OS::Nova::ServerGroup'
+            },
             'volume_0': {
                 'properties': {
                     'description': 'Description',
@@ -2272,6 +2353,15 @@ class GenerationTests(BaseTestCase):
                 'resource_id': '1234',
                 'status': 'COMPLETE',
                 'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
             },
             'volume_0': {
                 'action': 'CREATE',
@@ -2317,6 +2407,13 @@ class GenerationTests(BaseTestCase):
                 },
                 'type': 'OS::Neutron::Router'
             },
+            'servergroup_0': {
+                'properties': {
+                    'name': 'policy_group',
+                    'policies': 'affinity'
+                },
+                'type': 'OS::Nova::ServerGroup'
+            }
         }
 
         expected_data = {
@@ -2346,6 +2443,15 @@ class GenerationTests(BaseTestCase):
                 'resource_id': '1234',
                 'status': 'COMPLETE',
                 'type': 'OS::Neutron::Router'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
             }
         }
         generator.extract_data()
@@ -2373,8 +2479,16 @@ class GenerationTests(BaseTestCase):
                     'name': 'myrouter'
                 },
                 'type': 'OS::Neutron::Router'
+            },
+            'servergroup_0': {
+                'properties': {
+                    'name': 'policy_group',
+                    'policies': 'affinity'
+                },
+                'type': 'OS::Nova::ServerGroup'
             }
         }
+
         expected_data = {
             'network_0': {
                 'action': 'CREATE',
@@ -2393,6 +2507,15 @@ class GenerationTests(BaseTestCase):
                 'resource_id': '1234',
                 'status': 'COMPLETE',
                 'type': 'OS::Neutron::Router'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
             }
         }
 

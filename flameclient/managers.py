@@ -176,6 +176,9 @@ class NovaManager(object):
     def server_security_group_list(self, server):
         return self.client().servers.list_security_group(server)
 
+    def servergroup_list(self):
+        return self.client().server_groups.list(True)
+
 
 class CinderManager(object):
     """Manage Cinder resources."""
