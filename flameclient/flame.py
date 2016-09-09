@@ -28,7 +28,7 @@ import netaddr
 import yaml
 
 from flameclient import managers
-
+from utils import api_threading
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -143,26 +143,46 @@ class TemplateGenerator(object):
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
 
-        self.subnets = self.build_data(self.neutron.subnet_list())
-        self.networks = self.build_data(self.neutron.network_list())
-        self.routers = self.neutron.router_list()
-        self.secgroups = self.build_data(self.neutron.secgroup_list())
-        self.floatingips = self.neutron.floatingip_list()
-        self.ports = self.build_data(self.neutron.port_list())
+        dict_target = {'subnets': (self.neutron.subnet_list,),
+                       'networks': (self.neutron.network_list,),
+                       'routers': (self.neutron.router_list,),
+                       'secgroups': (self.neutron.secgroup_list,),
+                       'floatingips': (self.neutron.floatingip_list,),
+                       'ports': (self.neutron.port_list,)}
+        if not exclude_keypairs:
+            dict_target['keypairs'] = (self.nova.keypair_list,)
+        if not exclude_servers:
+            dict_target['flavors'] = (self.nova.flavor_list,)
+            dict_target['servers'] = (self.nova.server_list,)
+
+        if (not exclude_volumes or
+                (exclude_volumes and not exclude_servers)):
+            dict_target['volumes'] = (self.cinder.volume_list,)
+        pool = api_threading.ApiPool(target_dict=dict_target)
+        pool.start()
+        results = pool.get_results(timeout=30)
+        pool.raise_caught_errors()
+
+        self.subnets = self.build_data(results['subnets'])
+        self.networks = self.build_data(results['networks'])
+        self.routers = results['routers']
+        self.secgroups = self.build_data(results['secgroups'])
+        self.floatingips = results['floatingips']
+        self.ports = self.build_data(results['ports'])
         self.external_networks = []
 
         if not exclude_keypairs:
             self.keys = dict(
                 (key.name, (index, key))
-                for index, key in enumerate(self.nova.keypair_list()))
+                for index, key in enumerate(results['keypairs']))
 
         if not exclude_servers:
-            self.flavors = self.build_data(self.nova.flavor_list())
-            self.servers = self.build_data(self.nova.server_list())
+            self.flavors = self.build_data(results['flavors'])
+            self.servers = self.build_data(results['servers'])
 
         if (not exclude_volumes or
                 (exclude_volumes and not exclude_servers)):
-            self.volumes = self.build_data(self.cinder.volume_list())
+            self.volumes = self.build_data(results['volumes'])
 
     def build_data(self, data):
         if not data:
