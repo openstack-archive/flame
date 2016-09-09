@@ -1,5 +1,6 @@
 pbr>=1.6
 Babel>=1.3
+futures
 
 netaddr>=0.7.12,!=0.7.16
 python-keystoneclient

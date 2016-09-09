@@ -24,7 +24,9 @@
 
 import logging
 
+import concurrent.futures
 import netaddr
+import six
 import yaml
 
 from flameclient import managers
@@ -107,6 +109,7 @@ class TemplateGenerator(object):
     def __init__(self, username, password, tenant_name, auth_url,
                  auth_token=None, insecure=False, endpoint_type='publicURL',
                  region_name=None):
+        self.thread_pool = concurrent.futures.ThreadPoolExecutor(10)
         self.generate_data = False
         self._setup_templates()
         self._setup_managers(username, password, tenant_name, auth_url,
@@ -136,34 +139,56 @@ class TemplateGenerator(object):
         self.nova = managers.NovaManager(self.keystone)
         self.cinder = managers.CinderManager(self.keystone)
 
+    def async_fetch_data(self, fetch_map):
+        """Call the methods in fetch_map in parallel and filter the results.
+
+        fetch_map is a dict of the form :
+            {resource_type, (fetch_method, filter_method), ...}
+
+        This method returns an iterator on the filtered results.
+        The iterator items are of the form (res_type, result)
+        """
+
+        future_res = {}
+        with self.thread_pool as tp:
+            for res_type, (method, data_filter) in six.iteritems(fetch_map):
+                future_res[tp.submit(method)] = res_type
+            for res_available in concurrent.futures.as_completed(future_res):
+                res = res_available.result()
+                res_type = future_res[res_available]
+                yield res_type, fetch_map[res_type][1](res)
+
     def extract_vm_details(self, exclude_servers, exclude_volumes,
                            exclude_keypairs, generate_data):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
-
-        self.subnets = self.build_data(self.neutron.subnet_list())
-        self.networks = self.build_data(self.neutron.network_list())
-        self.routers = self.neutron.router_list()
-        self.secgroups = self.build_data(self.neutron.secgroup_list())
-        self.servergroups = self.build_data(self.nova.servergroup_list())
-        self.floatingips = self.neutron.floatingip_list()
-        self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
-
+        fetch_map = {
+            'subnets': (self.neutron.subnet_list, self.build_data),
+            'networks': (self.neutron.network_list, self.build_data),
+            'routers': (self.neutron.router_list, lambda x: x),
+            'secgroups': (self.neutron.secgroup_list, self.build_data),
+            'servergroups': (self.nova.servergroup_list, self.build_data),
+            'floatingips': (self.neutron.floatingip_list, lambda x: x),
+            'ports': (self.neutron.port_list, self.build_data),
+        }
         if not exclude_keypairs:
-            self.keys = dict(
-                (key.name, (index, key))
-                for index, key in enumerate(self.nova.keypair_list()))
+            fetch_map['keys'] = (self.nova.keypair_list,
+                                 lambda l: {key.name: (index, key) for
+                                            index, key in enumerate(l)})
 
         if not exclude_servers:
-            self.flavors = self.build_data(self.nova.flavor_list())
-            self.servers = self.build_data(self.nova.server_list())
+            fetch_map['flavors'] = (self.nova.flavor_list, self.build_data)
+            fetch_map['servers'] = (self.nova.server_list, self.build_data)
 
         if (not exclude_volumes or
                 (exclude_volumes and not exclude_servers)):
-            self.volumes = self.build_data(self.cinder.volume_list())
+            fetch_map['volumes'] = (self.cinder.volume_list, self.build_data)
+
+        for res_type, result in self.async_fetch_data(fetch_map):
+            self.__setattr__(res_type, result)
 
     def build_data(self, data):
         if not data:
