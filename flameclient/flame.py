@@ -392,6 +392,11 @@ class TemplateGenerator(object):
                 del rule['protocol']
                 del rule['port_range_min']
                 del rule['port_range_max']
+            elif rule['protocol'] in ('tcp', 'udp'):
+                if rule['port_range_min'] is None:
+                    rule['port_range_min'] = 1
+                if rule['port_range_max'] is None:
+                    rule['port_range_max'] = 65535
             rg_id = rule['remote_group_id']
             if rg_id is not None:
                 rule['remote_mode'] = "remote_group_id"
