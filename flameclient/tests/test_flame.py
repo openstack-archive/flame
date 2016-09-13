@@ -1230,6 +1230,8 @@ class NetworkTests(BaseTestCase):
                             },
                             'direction': 'ingress',
                             'protocol': 'icmp',
+                            'port_range_min': 0,
+                            'port_range_max': 255,
                             'ethertype': 'IPv4',
                             'remote_mode': 'remote_group_id'
                         }
