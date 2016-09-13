@@ -876,6 +876,66 @@ class NetworkTests(BaseTestCase):
         self.check_template(generator._extract_floating(), expected_resources,
                             expected_parameters)
 
+    def test_security_group_default_tcp_port(self):
+        rules = [
+            {
+                'remote_group_id': '1234',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': 'tcp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_min': None,
+                'port_range_max': None,
+                'id': '5678',
+                'security_group_id': '1234'
+            },
+        ]
+
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'toto',
+                        'description': 'description',
+                        'security_group_rules': rules,
+                        'id': '1234'}, ]
+        self.mock_neutron.return_value = fake
+
+        generator = self.get_generator(False, False, False, False)
+        out = generator._extract_secgroups()
+        rule = out[0].properties['rules'][0]
+        self.assertEqual(65535, rule['port_range_max'])
+        self.assertEqual(1, rule['port_range_min'])
+
+    def test_security_group_default_udp_port(self):
+        rules = [
+            {
+                'remote_group_id': '1234',
+                'direction': 'ingress',
+                'remote_ip_prefix': None,
+                'protocol': 'udp',
+                'ethertype': 'IPv4',
+                'tenant_id': '7777',
+                'port_range_min': None,
+                'port_range_max': None,
+                'id': '5678',
+                'security_group_id': '1234'
+            },
+        ]
+
+        fake = FakeNeutronManager()
+        fake.groups = [{'tenant_id': '7777',
+                        'name': 'toto',
+                        'description': 'description',
+                        'security_group_rules': rules,
+                        'id': '1234'}, ]
+        self.mock_neutron.return_value = fake
+
+        generator = self.get_generator(False, False, False, False)
+        out = generator._extract_secgroups()
+        rule = out[0].properties['rules'][0]
+        self.assertEqual(65535, rule['port_range_max'])
+        self.assertEqual(1, rule['port_range_min'])
+
     def test_security_group(self):
         rules = [
             {
