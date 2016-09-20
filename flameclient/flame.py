@@ -147,6 +147,7 @@ class TemplateGenerator(object):
         self.networks = self.build_data(self.neutron.network_list())
         self.routers = self.neutron.router_list()
         self.secgroups = self.build_data(self.neutron.secgroup_list())
+        self.servergroups = self.build_data(self.nova.servergroup_list())
         self.floatingips = self.neutron.floatingip_list()
         self.ports = self.build_data(self.neutron.port_list())
         self.external_networks = []
@@ -327,6 +328,16 @@ class TemplateGenerator(object):
             resources.append(resource)
         return resources
 
+    def _extract_servergroups(self):
+        resources = []
+        for n, servergroup in self.servergroups.values():
+            properties = {'name': servergroup.name,
+                          'policies': servergroup.policies}
+            resource = Resource("servergroup_%d" % n, 'OS::Nova::ServerGroup',
+                                servergroup.id, properties)
+            resources.append(resource)
+        return resources
+
     def _extract_keys(self):
         resources = []
         for n, key in self.keys.values():
@@ -373,6 +384,9 @@ class TemplateGenerator(object):
                                 subnet['network_id'])
                             networks.append({'network': {'get_resource': net}})
         return networks
+
+    def get_servergroup_resource_name(self, servergroup_id):
+        return "servergroup_%d" % self.servergroups[servergroup_id][0]
 
     def _extract_servers(self):
         resources = []
@@ -456,6 +470,15 @@ class TemplateGenerator(object):
                 # block_device_mapping_v2 is the new way of associating
                 # block devices to an instance
                 properties['block_device_mapping_v2'] = server_volumes
+
+            # server-group
+            for servergroup in self.servergroups.values():
+                if server.id in servergroup[1].members:
+                    hint = {'group': {'get_resource':
+                            self.get_servergroup_resource_name
+                            (servergroup[1].id)}}
+                    properties['scheduler_hints'] = \
+                        hint
 
             resources.append(resource)
         return resources
@@ -551,6 +574,7 @@ class TemplateGenerator(object):
         resources += self._extract_subnets()
         resources += self._extract_secgroups()
         resources += self._extract_floating()
+        resources += self._extract_servergroups()
 
         if not self.exclude_keypairs:
             resources += self._extract_keys()
