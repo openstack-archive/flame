@@ -161,6 +161,10 @@ class TemplateGenerator(object):
     def order_ports(self):
         for i, port in self.ports.values():
             for fixed_ip in port['fixed_ips']:
+                # In case of port is in other tenant's subnet.
+                if fixed_ip['subnet_id'] not in self.subnets:
+                    continue
+
                 ip_subnet = self.subnets[fixed_ip['subnet_id']][1]
                 pools = ip_subnet.get('allocation_pools')
                 if pools:
