@@ -171,22 +171,25 @@ class TemplateGenerator(object):
 
     def extract_vm_details(self, exclude_servers, exclude_volumes,
                            exclude_keypairs, generate_data,
-                           extract_ports=False):
+                           extract_ports=False, exclude_secgroups=False):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
         self.extract_ports = extract_ports
+        self.exclude_secgroups = exclude_secgroups
         self.external_networks = []
         fetch_map = {
             'subnets': (self.neutron.subnet_list, self.build_data),
             'networks': (self.neutron.network_list, self.build_data),
             'routers': (self.neutron.router_list, lambda x: x),
-            'secgroups': (self.neutron.secgroup_list, self.build_data),
             'servergroups': (self.nova.servergroup_list, self.build_data),
             'floatingips': (self.neutron.floatingip_list, lambda x: x),
             'ports': (self.neutron.port_list, self.build_data),
         }
+
+        if not exclude_secgroups:
+            fetch_map['secgroups'] = (self.neutron.secgroup_list, self.build_data)
 
         if not exclude_keypairs:
             fetch_map['keys'] = (self.nova.keypair_list,
@@ -377,8 +380,9 @@ class TemplateGenerator(object):
                 properties['name'] = port['name']
             resource = Resource("port_%d" % n, 'OS::Neutron::Port',
                                 port['id'], properties)
-            security_groups = self.build_port_secgroups(resource, port)
-            properties['security_groups'] = security_groups
+            if not self.exclude_secgroups:
+                security_groups = self.build_port_secgroups(resource, port)
+                properties['security_groups'] = security_groups
 
             resources.append(resource)
             resources_dict[port['id']] = resource
@@ -567,9 +571,10 @@ class TemplateGenerator(object):
                 if ports:
                     properties['networks'] = ports
             else:
-                security_groups = self.build_secgroups(resource, server)
-                if security_groups:
-                    properties['security_groups'] = security_groups
+                if not self.exclude_secgroups:
+                    security_groups = self.build_secgroups(resource, server)
+                    if security_groups:
+                        properties['security_groups'] = security_groups
 
                 networks = self.build_networks(server.addresses)
                 if networks:
@@ -723,9 +728,11 @@ class TemplateGenerator(object):
             resources += self._extract_ports()
 
         resources += self._extract_subnets()
-        resources += self._extract_secgroups()
         resources += self._extract_floating()
         resources += self._extract_servergroups()
+
+        if not self.exclude_secgroups:
+            resources += self._extract_secgroups()
 
         if not self.exclude_keypairs:
             resources += self._extract_keys()
