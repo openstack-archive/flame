@@ -91,6 +91,10 @@ def main(args=None):
     parser.add_argument('--extract-ports', action='store_true',
                         default=False,
                         help="Export the tenant network ports")
+    parser.add_argument('--exclude-secgroups', action='store_true',
+                        default=False,
+                        help="Do not export in template "
+                             "security group resources")
 
     args = parser.parse_args()
     flame = client.Client(args.username, args.password,
@@ -105,7 +109,8 @@ def main(args=None):
                                 args.exclude_volumes,
                                 args.exclude_keypairs,
                                 args.generate_stack_data,
-                                args.extract_ports)
+                                args.extract_ports,
+                                args.exclude_secgroups)
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template_and_data())

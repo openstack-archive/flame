@@ -275,12 +275,13 @@ class BaseTestCase(base.TestCase):
         super(BaseTestCase, self).tearDown()
 
     def get_generator(self, exclude_servers, exclude_volumes,
-                      exclude_keypairs, generate_data, extract_ports):
+                      exclude_keypairs, generate_data,
+                      extract_ports, exclude_secgroups=False):
         generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
                                             'publicURL')
         generator.extract_vm_details(exclude_servers, exclude_volumes,
                                      exclude_keypairs, generate_data,
-                                     extract_ports)
+                                     extract_ports, exclude_secgroups)
         return generator
 
     def check_stackdata(self, resources, expected_resources):
@@ -2101,6 +2102,341 @@ class GenerationTests(BaseTestCase):
         self.assertEqual(generator.template['resources'], expected_resources)
         self.assertEqual(generator.template['parameters'], expected_parameters)
         self.assertEqual(generator.stack_data['resources'], expected_data)
+
+    def test_generation_secgroups(self):
+        self.mock_neutron().groups = [{
+            'id': '4321',
+            'name': 'my_sec_group',
+            'security_group_rules': [{
+                'protocol': 'TCP',
+                'port_range_min': '22',
+                'port_range_max': '22',
+                'tenant_id': 'tenant',
+                'id': '1212',
+                'security_group_id': '4444',
+                'remote_group_id': None
+            }],
+            'description': 'group description'
+        }]
+
+        generator = self.get_generator(False, False, False, True, False, False)
+
+        expected_resources = {
+            "volume_0": {
+                "properties": {
+                    "name": "vol1",
+                    "volume_type": {
+                        "get_param": "volume_0_volume_type"
+                    },
+                    "description": "Description",
+                    "size": 1
+                },
+                "type": "OS::Cinder::Volume"
+            },
+            "key_0": {
+                "type": "OS::Nova::KeyPair",
+                "properties": {
+                    "name": "testkey",
+                    "public_key": "ssh-rsa XXXX"
+                }
+            },
+            "network_0": {
+                "properties": {
+                    "admin_state_up": True,
+                    "shared": False,
+                    "name": "mynetwork"
+                },
+                "type": "OS::Neutron::Net"
+            },
+            "router_0": {
+                "properties": {
+                    "admin_state_up": "true",
+                    "name": "myrouter"
+                },
+                "type": "OS::Neutron::Router"
+            },
+            "server_0": {
+                "properties": {
+                    "image": {
+                        "get_param": "server_0_image"
+                    },
+                    "flavor": {
+                        "get_param": "server_0_flavor"
+                    },
+                    "name": "server1",
+                    "diskConfig": "MANUAL",
+                    "key_name": {
+                        "get_resource": "key_0"
+                    }
+                },
+                "type": "OS::Nova::Server"
+            },
+            "security_group_0": {
+                "type": "OS::Neutron::SecurityGroup",
+                "properties": {
+                    "rules": [
+                        {
+                            "port_range_min": "22",
+                            "port_range_max": "22",
+                            "protocol": "TCP"
+                        }
+                    ],
+                    "name": "my_sec_group",
+                    "description": "group description"
+                }
+            },
+            "servergroup_0": {
+                "type": "OS::Nova::ServerGroup",
+                "properties": {
+                    "policies": "affinity",
+                    "name": "policy_group"
+                }
+            }
+        }
+
+        expected_parameters = {
+            "server_0_image": {
+                "description": "Image to use to boot server server_0",
+                "type": "string",
+                "default": "3333"
+            },
+            "server_0_flavor": {
+                "description": "Flavor to use for server server_0",
+                "type": "string",
+                "default": "m1.small"
+            },
+            "volume_0_volume_type": {
+                "default": "fast",
+                "description": "Volume type for volume volume_0",
+                "type": "string"
+            }
+        }
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'security_group_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'security_group_0',
+                'resource_data': {},
+                'resource_id': '4321',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::SecurityGroup'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(expected_resources, generator.template['resources'])
+        self.assertEqual(expected_parameters, generator.template['parameters'])
+        self.assertEqual(expected_data, generator.stack_data['resources'])
+
+    def test_generation_exclude_secgroups(self):
+        self.mock_neutron().groups = [{
+            'id': '4321',
+            'name': 'my_sec_group',
+            'security_group_rules': [{
+                'protocol': 'TCP',
+                'port_range_min': '22',
+                'port_range_max': '22',
+                'tenant_id': 'tenant',
+                'id': '1212',
+                'security_group_id': '4444',
+                'remote_group_id': None
+            }],
+            'description': 'group description'
+        }]
+
+        generator = self.get_generator(False, False, False, True, False, True)
+
+        expected_resources = {
+            "volume_0": {
+                "properties": {
+                    "name": "vol1",
+                    "volume_type": {
+                        "get_param": "volume_0_volume_type"
+                    },
+                    "description": "Description",
+                    "size": 1
+                },
+                "type": "OS::Cinder::Volume"
+            },
+            "key_0": {
+                "type": "OS::Nova::KeyPair",
+                "properties": {
+                    "name": "testkey",
+                    "public_key": "ssh-rsa XXXX"
+                }
+            },
+            "network_0": {
+                "properties": {
+                    "admin_state_up": True,
+                    "shared": False,
+                    "name": "mynetwork"
+                },
+                "type": "OS::Neutron::Net"
+            },
+            "router_0": {
+                "properties": {
+                    "admin_state_up": "true",
+                    "name": "myrouter"
+                },
+                "type": "OS::Neutron::Router"
+            },
+            "server_0": {
+                "properties": {
+                    "image": {
+                        "get_param": "server_0_image"
+                    },
+                    "flavor": {
+                        "get_param": "server_0_flavor"
+                    },
+                    "name": "server1",
+                    "diskConfig": "MANUAL",
+                    "key_name": {
+                        "get_resource": "key_0"
+                    }
+                },
+                "type": "OS::Nova::Server"
+            },
+            "servergroup_0": {
+                "type": "OS::Nova::ServerGroup",
+                "properties": {
+                    "policies": "affinity",
+                    "name": "policy_group"
+                }
+            }
+        }
+
+        expected_parameters = {
+            "server_0_image": {
+                "description": "Image to use to boot server server_0",
+                "type": "string",
+                "default": "3333"
+            },
+            "server_0_flavor": {
+                "description": "Flavor to use for server server_0",
+                "type": "string",
+                "default": "m1.small"
+            },
+            "volume_0_volume_type": {
+                "default": "fast",
+                "description": "Volume type for volume volume_0",
+                "type": "string"
+            }
+        }
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(expected_resources, generator.template['resources'])
+        self.assertEqual(expected_parameters, generator.template['parameters'])
+        self.assertEqual(expected_data, generator.stack_data['resources'])
 
     def test_generation_exclude_servers(self):
 
