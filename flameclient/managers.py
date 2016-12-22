@@ -112,7 +112,8 @@ class NeutronManager(object):
         return self._client.list_ports(device_id=router['id'])['ports']
 
     def port_list(self):
-        return self.client().list_ports()['ports']
+        return filter(self._owned_resource,
+                      self.client().list_ports()['ports'])
 
     def network_list(self):
         return filter(self._owned_resource,
