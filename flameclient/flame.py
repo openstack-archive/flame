@@ -583,7 +583,13 @@ class TemplateGenerator(object):
             for server_volume in getattr(server, key):
                 volume = self.volumes[server_volume['id']]
                 volume_resource_name = "volume_%d" % volume[0]
-                device = volume[1].attachments[0]['device']
+
+                attachments = volume[1].attachments
+
+                if not attachments:
+                    continue
+
+                device = attachments[0]['device']
                 if not self.exclude_volumes:
                     server_volumes.append(
                         {'volume_id': {'get_resource': volume_resource_name},
