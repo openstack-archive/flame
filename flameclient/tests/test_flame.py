@@ -276,12 +276,15 @@ class BaseTestCase(base.TestCase):
 
     def get_generator(self, exclude_servers, exclude_volumes,
                       exclude_keypairs, generate_data,
-                      extract_ports, exclude_secgroups=False):
+                      extract_ports, exclude_secgroups=False,
+                      exclude_floatingips=False):
         generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
                                             'publicURL')
-        generator.extract_vm_details(exclude_servers, exclude_volumes,
-                                     exclude_keypairs, generate_data,
-                                     extract_ports, exclude_secgroups)
+        generator.extract_vm_details(
+            exclude_servers, exclude_volumes, exclude_keypairs,
+            generate_data, extract_ports, exclude_secgroups,
+            exclude_floatingips
+        )
         return generator
 
     def check_stackdata(self, resources, expected_resources):
@@ -2299,6 +2302,367 @@ class GenerationTests(BaseTestCase):
         }]
 
         generator = self.get_generator(False, False, False, True, False, True)
+
+        expected_resources = {
+            "volume_0": {
+                "properties": {
+                    "name": "vol1",
+                    "volume_type": {
+                        "get_param": "volume_0_volume_type"
+                    },
+                    "description": "Description",
+                    "size": 1
+                },
+                "type": "OS::Cinder::Volume"
+            },
+            "key_0": {
+                "type": "OS::Nova::KeyPair",
+                "properties": {
+                    "name": "testkey",
+                    "public_key": "ssh-rsa XXXX"
+                }
+            },
+            "network_0": {
+                "properties": {
+                    "admin_state_up": True,
+                    "shared": False,
+                    "name": "mynetwork"
+                },
+                "type": "OS::Neutron::Net"
+            },
+            "router_0": {
+                "properties": {
+                    "admin_state_up": "true",
+                    "name": "myrouter"
+                },
+                "type": "OS::Neutron::Router"
+            },
+            "server_0": {
+                "properties": {
+                    "image": {
+                        "get_param": "server_0_image"
+                    },
+                    "flavor": {
+                        "get_param": "server_0_flavor"
+                    },
+                    "name": "server1",
+                    "diskConfig": "MANUAL",
+                    "key_name": {
+                        "get_resource": "key_0"
+                    }
+                },
+                "type": "OS::Nova::Server"
+            },
+            "servergroup_0": {
+                "type": "OS::Nova::ServerGroup",
+                "properties": {
+                    "policies": "affinity",
+                    "name": "policy_group"
+                }
+            }
+        }
+
+        expected_parameters = {
+            "server_0_image": {
+                "description": "Image to use to boot server server_0",
+                "type": "string",
+                "default": "3333"
+            },
+            "server_0_flavor": {
+                "description": "Flavor to use for server server_0",
+                "type": "string",
+                "default": "m1.small"
+            },
+            "volume_0_volume_type": {
+                "default": "fast",
+                "description": "Volume type for volume volume_0",
+                "type": "string"
+            }
+        }
+        expected_data = {
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(expected_resources, generator.template['resources'])
+        self.assertEqual(expected_parameters, generator.template['parameters'])
+        self.assertEqual(expected_data, generator.stack_data['resources'])
+
+    def test_generation_include_floatingip(self):
+        self.mock_neutron().floatingips = [{
+            "floating_ip_address": "95.213.128.122",
+            "description": None,
+            "fixed_ip_address": "192.168.20.2",
+            "floating_network_id": "b5bf0d0e-52b4-40ef-8711-5376bd17f60d",
+            "status": "ACTIVE",
+            "tenant_id": "2738cb34a7144b9f9180abf535a793bc",
+            "id": "00fa4e0f-792e-4a15-9ca0-294d66a98324",
+            "port_id": "98c44a69-e633-4f67-96d7-75c67e1bba12",
+            "router_id": "bc529ac3-efad-45ab-b6ae-902ff2234591"
+        }]
+
+        self.mock_neutron().ports = [{
+            "fixed_ips": [{
+                "ip_address": "192.168.20.2",
+                "subnet_id": "4423916a-b9a2-4b79-965b-10d488615ab1"
+            }],
+            "id": "98c44a69-e633-4f67-96d7-75c67e1bba12",
+            "network_id": "678f88c9-0ded-4059-aa37-dcacc2e22f09",
+            "tenant_id": "2738cb34a7144b9f9180abf535a793bc",
+            "name": "",
+            "device_owner": "compute:ru-1a",
+            "device_id": None,
+        }]
+
+        generator = self.get_generator(
+            False, False, False, True, False, False, False
+        )
+
+        expected_resources = {
+            'floatingip_0': {
+                'properties': {
+                    'floating_network_id': {
+                        'get_param': 'external_network_for_floating_ip_0'
+                    }
+                },
+                'type': 'OS::Neutron::FloatingIP'
+            },
+            "volume_0": {
+                "properties": {
+                    "name": "vol1",
+                    "volume_type": {
+                        "get_param": "volume_0_volume_type"
+                    },
+                    "description": "Description",
+                    "size": 1
+                },
+                "type": "OS::Cinder::Volume"
+            },
+            "key_0": {
+                "type": "OS::Nova::KeyPair",
+                "properties": {
+                    "name": "testkey",
+                    "public_key": "ssh-rsa XXXX"
+                }
+            },
+            "network_0": {
+                "properties": {
+                    "admin_state_up": True,
+                    "shared": False,
+                    "name": "mynetwork"
+                },
+                "type": "OS::Neutron::Net"
+            },
+            "router_0": {
+                "properties": {
+                    "admin_state_up": "true",
+                    "name": "myrouter"
+                },
+                "type": "OS::Neutron::Router"
+            },
+            "server_0": {
+                "properties": {
+                    "image": {
+                        "get_param": "server_0_image"
+                    },
+                    "flavor": {
+                        "get_param": "server_0_flavor"
+                    },
+                    "name": "server1",
+                    "diskConfig": "MANUAL",
+                    "key_name": {
+                        "get_resource": "key_0"
+                    }
+                },
+                "type": "OS::Nova::Server"
+            },
+            "servergroup_0": {
+                "type": "OS::Nova::ServerGroup",
+                "properties": {
+                    "policies": "affinity",
+                    "name": "policy_group"
+                }
+            }
+        }
+
+        expected_parameters = {
+            'external_network_for_floating_ip_0': {
+                'default': 'b5bf0d0e-52b4-40ef-8711-5376bd17f60d',
+                'description': 'Network to allocate floating IP from',
+                'type': 'string'
+            },
+            "server_0_image": {
+                "description": "Image to use to boot server server_0",
+                "type": "string",
+                "default": "3333"
+            },
+            "server_0_flavor": {
+                "description": "Flavor to use for server server_0",
+                "type": "string",
+                "default": "m1.small"
+            },
+            "volume_0_volume_type": {
+                "default": "fast",
+                "description": "Volume type for volume volume_0",
+                "type": "string"
+            }
+        }
+        expected_data = {
+            'floatingip_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'floatingip_0',
+                'resource_data': {},
+                'resource_id': '00fa4e0f-792e-4a15-9ca0-294d66a98324',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::FloatingIP'
+            },
+            'key_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'key_0',
+                'resource_data': {},
+                'resource_id': 'key',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::KeyPair'
+            },
+            'network_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'network_0',
+                'resource_data': {},
+                'resource_id': '2222',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Net'
+            },
+            'router_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'router_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Neutron::Router'
+            },
+            'server_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'server_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::Server'
+            },
+            'servergroup_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'servergroup_0',
+                'resource_data': {},
+                'resource_id': '1234',
+                'status': 'COMPLETE',
+                'type': 'OS::Nova::ServerGroup'
+            },
+            'volume_0': {
+                'action': 'CREATE',
+                'metadata': {},
+                'name': 'volume_0',
+                'resource_data': {},
+                'resource_id': 1234,
+                'status': 'COMPLETE',
+                'type': 'OS::Cinder::Volume'
+            }
+        }
+
+        generator.extract_data()
+        self.assertEqual(expected_resources, generator.template['resources'])
+        self.assertEqual(expected_parameters, generator.template['parameters'])
+        self.assertEqual(expected_data, generator.stack_data['resources'])
+
+    def test_generation_exclude_floatingip(self):
+        self.mock_neutron().floatingips = [{
+            'id': '4321',
+            'name': 'my_sec_group',
+            'security_group_rules': [{
+                'protocol': 'TCP',
+                'port_range_min': '22',
+                'port_range_max': '22',
+                'tenant_id': 'tenant',
+                'id': '1212',
+                'security_group_id': '4444',
+                'remote_group_id': None
+            }],
+            'description': 'group description'
+        }]
+
+        self.mock_neutron().ports = [{
+            "fixed_ips": [{
+                "ip_address": "192.168.20.2",
+                "subnet_id": "4423916a-b9a2-4b79-965b-10d488615ab1"
+            }],
+            "id": "98c44a69-e633-4f67-96d7-75c67e1bba12",
+            "network_id": "678f88c9-0ded-4059-aa37-dcacc2e22f09",
+            "tenant_id": "2738cb34a7144b9f9180abf535a793bc",
+            "name": "",
+            "device_owner": "compute:ru-1a",
+            "device_id": None,
+        }]
+
+        generator = self.get_generator(
+            False, False, False, True, False, False, True
+        )
 
         expected_resources = {
             "volume_0": {

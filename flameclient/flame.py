@@ -175,22 +175,28 @@ class TemplateGenerator(object):
 
     def extract_vm_details(self, exclude_servers, exclude_volumes,
                            exclude_keypairs, generate_data,
-                           extract_ports=False, exclude_secgroups=False):
+                           extract_ports=False, exclude_secgroups=False,
+                           exclude_floatingips=False):
         self.exclude_servers = exclude_servers
         self.exclude_volumes = exclude_volumes
         self.exclude_keypairs = exclude_keypairs
         self.generate_data = generate_data
         self.extract_ports = extract_ports
         self.exclude_secgroups = exclude_secgroups
+        self.exclude_floatingips = exclude_floatingips
         self.external_networks = []
         fetch_map = {
             'subnets': (self.neutron.subnet_list, self.build_data),
             'networks': (self.neutron.network_list, self.build_data),
             'routers': (self.neutron.router_list, lambda x: x),
             'servergroups': (self.nova.servergroup_list, self.build_data),
-            'floatingips': (self.neutron.floatingip_list, lambda x: x),
             'ports': (self.neutron.port_list, self.build_data),
         }
+
+        if not exclude_floatingips:
+            fetch_map['floatingips'] = (
+                self.neutron.floatingip_list, lambda x: x
+            )
 
         if not exclude_secgroups:
             fetch_map['secgroups'] = (
@@ -734,8 +740,10 @@ class TemplateGenerator(object):
             resources += self._extract_ports()
 
         resources += self._extract_subnets()
-        resources += self._extract_floating()
         resources += self._extract_servergroups()
+
+        if not self.exclude_floatingips:
+            resources += self._extract_floating()
 
         if not self.exclude_secgroups:
             resources += self._extract_secgroups()
