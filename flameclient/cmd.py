@@ -95,6 +95,10 @@ def main(args=None):
                         default=False,
                         help="Do not export in template "
                              "security group resources")
+    parser.add_argument('--exclude-floatingips', action='store_true',
+                        default=False,
+                        help="Do not export in template floating"
+                             " ip resources")
 
     args = parser.parse_args()
     flame = client.Client(args.username, args.password,
@@ -110,7 +114,8 @@ def main(args=None):
                                 args.exclude_keypairs,
                                 args.generate_stack_data,
                                 args.extract_ports,
-                                args.exclude_secgroups)
+                                args.exclude_secgroups,
+                                args.exclude_floatingips)
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template_and_data())
