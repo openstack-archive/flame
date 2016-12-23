@@ -35,13 +35,14 @@ class Client(object):
 
     def generate(self, exclude_servers, exclude_volumes, exclude_keypairs,
                  generate_stack_data, extract_ports=False,
-                 exclude_secgroups=False):
+                 exclude_secgroups=False, exclude_floatingips=False):
         self.template_generator.extract_vm_details(exclude_servers,
                                                    exclude_volumes,
                                                    exclude_keypairs,
                                                    generate_stack_data,
                                                    extract_ports,
-                                                   exclude_secgroups
+                                                   exclude_secgroups,
+                                                   exclude_floatingips
                                                    )
         self.template_generator.extract_data()
         return self.template_generator.heat_template_and_data()

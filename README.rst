@@ -38,7 +38,7 @@ Usage
                  [--os-cert <certification>] [--os-key <key>]
                  [--endpoint_type ENDPOINT_TYPE] [--exclude-servers]
                  [--exclude-volumes] [--exclude-keypairs] [--generate-stack-data]
-                 [--extract-ports] [--exclude-secgroup]
+                 [--extract-ports] [--exclude-secgroup] [--exclude-floatingips]
 
     Heat template and data file generator
 
@@ -72,6 +72,7 @@ Usage
                             file.
       --extract-ports       Export the tenant network ports
       --exclude-secgroups   Do not export in template security group resources
+      --exclude-floatingips Do not export in template floating ip resources
 
 Usage example
 -------------
