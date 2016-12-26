@@ -26,23 +26,27 @@ from flameclient.flame import TemplateGenerator  # noqa
 
 
 class Client(object):
-    def __init__(self, username, password, tenant_name, auth_url, auth_token,
+    def __init__(self, session=None, username=None, password=None,
+                 tenant_name=None, auth_url=None, auth_token=None,
                  **kwargs):
-        self.template_generator = TemplateGenerator(username, password,
-                                                    tenant_name, auth_url,
-                                                    auth_token,
-                                                    **kwargs)
+        self.template_generator = TemplateGenerator(
+            session, username, password,
+            tenant_name, auth_url,
+            auth_token,
+            **kwargs
+        )
 
     def generate(self, exclude_servers, exclude_volumes, exclude_keypairs,
                  generate_stack_data, extract_ports=False,
                  exclude_secgroups=False, exclude_floatingips=False):
-        self.template_generator.extract_vm_details(exclude_servers,
-                                                   exclude_volumes,
-                                                   exclude_keypairs,
-                                                   generate_stack_data,
-                                                   extract_ports,
-                                                   exclude_secgroups,
-                                                   exclude_floatingips
-                                                   )
+        self.template_generator.extract_vm_details(
+            exclude_servers,
+            exclude_volumes,
+            exclude_keypairs,
+            generate_stack_data,
+            extract_ports,
+            exclude_secgroups,
+            exclude_floatingips
+        )
         self.template_generator.extract_data()
         return self.template_generator.heat_template_and_data()
