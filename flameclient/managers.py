@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 from cinderclient.v1 import client as cinder_client
-from keystoneclient.v2_0 import client as keystone_client
+from keystoneclient.v3 import client as keystone_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 
@@ -32,9 +32,10 @@ class KeystoneManager(object):
     """Manages Keystone queries."""
     _client = None
 
-    def __init__(self, username, password, project, auth_url, insecure,
-                 endpoint_type='publicURL', cert=None, key=None,
-                 region_name=None, auth_token=None):
+    def __init__(self, username=None, password=None, project=None,
+                 auth_url=None, insecure=False, endpoint_type='publicURL',
+                 cert=None, key=None, region_name=None,
+                 auth_token=None, session=None):
         self.username = username
         self.password = password
         self.project = project
@@ -45,24 +46,37 @@ class KeystoneManager(object):
         self.region_name = region_name
         self.endpoint_type = endpoint_type
         self.auth_token = auth_token
+        self.session = session
 
     def authenticate(self):
-        self.client().authenticate()
-        self.auth_token = self.client().auth_token
+        if self.session:
+            self.auth_token = self.session.get_token()
+        else:
+            self.client().authenticate()
+            self.auth_token = self.client().auth_token
 
     def client(self):
         if not self._client:
-            self._client = keystone_client.Client(
-                username=self.username,
-                password=self.password,
-                tenant_name=self.project,
-                auth_url=self.auth_url,
-                cert=self.cert,
-                key=self.key,
-                region_name=self.region_name,
-                insecure=self.insecure,
-                endpoint_type=self.endpoint_type,
-                token=self.auth_token)
+            if self.session:
+                self._client = keystone_client.Client(
+                    session=self.session,
+                    endpoint_type=self.endpoint_type,
+                    auth_url=self.auth_url
+                )
+            else:
+                self._client = keystone_client.Client(
+                    session=self.session,
+                    username=self.username,
+                    password=self.password,
+                    tenant_name=self.project,
+                    auth_url=self.auth_url,
+                    cert=self.cert,
+                    key=self.key,
+                    region_name=self.region_name,
+                    insecure=self.insecure,
+                    endpoint_type=self.endpoint_type,
+                    token=self.auth_token
+                )
         return self._client
 
     def set_client(self, client):
@@ -72,8 +86,14 @@ class KeystoneManager(object):
         return self.client().auth_token
 
     def get_endpoint(self, service_type, endpoint_type="publicURL"):
-        catalog = self.client().service_catalog.get_endpoints()
-        return catalog[service_type][0][endpoint_type]
+        if self.session:
+            return self.session.get_endpoint(
+                service_type=service_type,
+                endpoint_type=endpoint_type
+            )
+        else:
+            catalog = self.client().service_catalog.get_endpoints()
+            return catalog[service_type][0][endpoint_type]
 
     def get_project_id(self):
         return self.client().project_id
@@ -89,11 +109,19 @@ class NeutronManager(object):
     def client(self):
         if not self._client:
             # Create the client
-            self._client = neutron_client.Client(
-                auth_url=self.keystone_mgr.auth_url,
-                insecure=self.keystone_mgr.insecure,
-                endpoint_url=self.keystone_mgr.get_endpoint('network'),
-                token=self.keystone_mgr.auth_token)
+            if self.keystone_mgr.session:
+                self._client = neutron_client.Client(
+                    session=self.keystone_mgr.session,
+                    endpoint_type=self.keystone_mgr.endpoint_type,
+                    region_name=self.keystone_mgr.region_name
+                )
+            else:
+                self._client = neutron_client.Client(
+                    auth_url=self.keystone_mgr.auth_url,
+                    insecure=self.keystone_mgr.insecure,
+                    endpoint_url=self.keystone_mgr.get_endpoint('network'),
+                    token=self.keystone_mgr.get_token()
+                )
         if not self._project_id:
             self._project_id = self.keystone_mgr.get_project_id()
         return self._client
@@ -145,17 +173,25 @@ class NovaManager(object):
 
     def client(self):
         if not self._client:
-            self._client = nova_client.Client(
-                '2',
-                self.keystone_mgr.username,
-                self.keystone_mgr.auth_token,
-                self.keystone_mgr.project,
-                self.keystone_mgr.auth_url,
-                region_name=self.keystone_mgr.region_name,
-                insecure=self.keystone_mgr.insecure,
-                endpoint_type=self.keystone_mgr.endpoint_type,
-                auth_token=self.keystone_mgr.auth_token
-            )
+            if self.keystone_mgr.session:
+                self._client = nova_client.Client(
+                    2,
+                    session=self.keystone_mgr.session,
+                    endpoint_type=self.keystone_mgr.endpoint_type,
+                    region_name=self.keystone_mgr.region_name
+                )
+            else:
+                self._client = nova_client.Client(
+                    '2',
+                    self.keystone_mgr.username,
+                    self.keystone_mgr.get_token(),
+                    self.keystone_mgr.project,
+                    self.keystone_mgr.auth_url,
+                    region_name=self.keystone_mgr.region_name,
+                    insecure=self.keystone_mgr.insecure,
+                    endpoint_type=self.keystone_mgr.endpoint_type,
+                    auth_token=self.keystone_mgr.get_token()
+                )
         return self._client
 
     def set_client(self, client):
@@ -200,15 +236,22 @@ class CinderManager(object):
                 cinder_url = self.keystone_mgr.get_endpoint("volumev2")
             except KeyError:
                 cinder_url = self.keystone_mgr.get_endpoint("volume")
-            client = cinder_client.Client(
-                self.keystone_mgr.username,
-                self.keystone_mgr.auth_token,
-                project_id=self.keystone_mgr.project,
-                auth_url=cinder_url,
-                http_log_debug=True,
-                insecure=self.keystone_mgr.insecure
-            )
-            client.client.auth_token = self.keystone_mgr.auth_token
+            if self.keystone_mgr.session:
+                client = cinder_client.Client(
+                    session=self.keystone_mgr.session,
+                    endpoint_type=self.keystone_mgr.endpoint_type,
+                    region_name=self.keystone_mgr.region_name
+                )
+            else:
+                client = cinder_client.Client(
+                    self.keystone_mgr.username,
+                    self.keystone_mgr.get_token(),
+                    project_id=self.keystone_mgr.project,
+                    auth_url=cinder_url,
+                    http_log_debug=True,
+                    insecure=self.keystone_mgr.insecure
+                )
+            client.client.auth_token = self.keystone_mgr.get_token()
             client.client.management_url = cinder_url
             self._client = client
         return self._client

@@ -27,6 +27,10 @@ from __future__ import print_function
 import argparse
 import os
 
+from keystoneauth1.identity import v2
+from keystoneauth1.identity import v3
+from keystoneauth1 import session
+
 from flameclient import client
 
 
@@ -53,6 +57,22 @@ def main(args=None):
                         default=os.environ.get("OS_AUTH_URL"),
                         help="Authentication URL. "
                              "Defaults to env[OS_AUTH_URL].")
+    parser.add_argument("--user-domain-name", type=str,
+                        default=os.environ.get("OS_USER_DOMAIN_NAME"),
+                        help="User domain id. "
+                             "Defaults to env[OS_USER_DOMAIN_NAME].")
+    parser.add_argument("--user-domain-id", type=str,
+                        default=os.environ.get("OS_USER_DOMAIN_ID"),
+                        help="User domain name. "
+                             "Defaults to env[OS_USER_DOMAIN_ID].")
+    parser.add_argument("--project-domain-id", type=str,
+                        default=os.environ.get("OS_PROJECT_DOMAIN_ID"),
+                        help="Project domain id. "
+                             "Defaults to env[OS_PROJECT_DOMAIN_ID].")
+    parser.add_argument("--project-domain-name", type=str,
+                        default=os.environ.get("OS_PROJECT_DOMAIN_NAME"),
+                        help="project domain name. "
+                             "Defaults to env[OS_PROJECT_DOMAIN_NAME].")
     parser.add_argument("--os-auth-token", type=str,
                         default=os.environ.get("OS_AUTH_TOKEN"),
                         help="User's auth token. "
@@ -101,7 +121,19 @@ def main(args=None):
                              " ip resources")
 
     args = parser.parse_args()
-    flame = client.Client(args.username, args.password,
+
+    auth_map = {
+        2: get_v2_auth,
+        3: get_v3_auth
+    }
+    auth = auth_map[_determine_auth_version(args.auth_url)](args)
+    ses = session.Session(
+        auth=auth,
+        cert=args.os_cert,
+        verify=not args.insecure
+    )
+
+    flame = client.Client(ses, args.username, args.password,
                           args.project, args.auth_url,
                           args.os_auth_token,
                           cert=args.os_cert, key=args.os_key,
@@ -119,3 +151,27 @@ def main(args=None):
     template.extract_data()
     print("### Heat Template ###")
     print(template.heat_template_and_data())
+
+
+def _determine_auth_version(auth_url):
+    return 3 if "v3" in auth_url else 2
+
+
+def get_v2_auth(args):
+    return v2.Password(
+        args.auth_url, args.username,
+        args.password, tenant_name=args.project
+    )
+
+
+def get_v3_auth(args):
+    return v3.Password(
+        args.auth_url,
+        username=args.username,
+        password=args.password,
+        user_domain_name=args.user_domain_name,
+        user_domain_id=args.user_domain_id,
+        project_name=args.project,
+        project_domain_name=args.project_domain_name,
+        project_domain_id=args.project_domain_id,
+    )

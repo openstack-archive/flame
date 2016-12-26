@@ -278,7 +278,7 @@ class BaseTestCase(base.TestCase):
                       exclude_keypairs, generate_data,
                       extract_ports, exclude_secgroups=False,
                       exclude_floatingips=False):
-        generator = flame.TemplateGenerator('x', 'x', 'x', 'x', True,
+        generator = flame.TemplateGenerator(None, 'x', 'x', 'x', 'x', True,
                                             'publicURL')
         generator.extract_vm_details(
             exclude_servers, exclude_volumes, exclude_keypairs,
@@ -334,8 +334,13 @@ class TemplateGenerationTest(BaseTestCase):
 class ClientTest(BaseTestCase):
     def setUp(self):
         super(ClientTest, self).setUp()
-        self.c = flame_client.Client('username', 'password', 'tenant_name',
-                                     'authUrl', 'auth_token')
+        self.c = flame_client.Client(
+            username='username',
+            password='password',
+            tenant_name='tenant_name',
+            auth_url='authUrl',
+            auth_token='auth_token'
+        )
 
     def test_generate(self):
         out = self.c.generate(False, False, False, True)

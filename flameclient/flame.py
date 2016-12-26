@@ -106,15 +106,17 @@ class Resource(object):
 
 class TemplateGenerator(object):
 
-    def __init__(self, username, password, tenant_name, auth_url,
-                 auth_token=None, cert=None, key=None, insecure=False,
+    def __init__(self, session=None, username=None, password=None,
+                 tenant_name=None, auth_url=None, auth_token=None,
+                 cert=None, key=None, insecure=False,
                  endpoint_type='publicURL', region_name=None):
         self.thread_pool = concurrent.futures.ThreadPoolExecutor(10)
         self.generate_data = False
         self._setup_templates()
-        self._setup_managers(username, password, tenant_name, auth_url, cert,
-                             key, insecure, endpoint_type, region_name,
-                             auth_token)
+        self._setup_managers(
+            session, username, password, tenant_name, auth_url,
+            insecure, endpoint_type, region_name, auth_token
+        )
 
     def _setup_templates(self):
         self.template = yaml.load(template_skeleton)
@@ -124,8 +126,9 @@ class TemplateGenerator(object):
         self.stack_data = yaml.load(stack_data_skeleton)
         self.stack_data['resources'] = {}
 
-    def _setup_managers(self, username, password, tenant_name, auth_url,
-                        insecure, endpoint_type, cert=None, key=None,
+    def _setup_managers(self, session=None, username=None, password=None,
+                        tenant_name=None, auth_url=None, insecure=False,
+                        endpoint_type=None, cert=None, key=None,
                         region_name=None, auth_token=None):
         self.keystone = managers.KeystoneManager(
             username, password,
@@ -133,6 +136,7 @@ class TemplateGenerator(object):
             auth_url, cert, key, insecure,
             endpoint_type,
             region_name=region_name,
+            session=session,
             auth_token=auth_token
         )
         self.keystone.authenticate()
