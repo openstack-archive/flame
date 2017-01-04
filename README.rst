@@ -35,6 +35,7 @@ Usage
     usage: flame [-h] [--username USERNAME] [--password PASSWORD]
                  [--project PROJECT] [--region REGION] [--auth_url AUTH_URL]
                  [--os-auth-token OS_AUTH_TOKEN] [--insecure]
+                 [--os-cert <certification>] [--os-key <key>]
                  [--endpoint_type ENDPOINT_TYPE] [--exclude-servers]
                  [--exclude-volumes] [--exclude-keypairs] [--generate-stack-data]
                  [--extract-ports]
@@ -51,6 +52,12 @@ Usage
       --auth_url AUTH_URL   Authentication URL. Defaults to env[OS_AUTH_URL].
       --os-auth-token OS_AUTH_TOKEN
                             User's auth token. Defaults to env[OS_AUTH_TOKEN].
+      --os-cert <certificate>
+                            Path to user's certificate needed to establish
+                            two-way SSL connection with the identity service.
+                            Defaults to env[OS_CERT].
+      --os-key <key>        Path to the user's certificate private key.
+                            Defaults to env[OS_KEY].
       --insecure            Explicitly allow clients to perform"insecure" SSL
                             (https) requests. The server's certificate will not be
                             verified against any certificate authorities. This
@@ -75,6 +82,12 @@ To use Flame you can provide yours OpenStack credentials as arguments :
 
 
 Or you can source your OpenStack RC file and use Flame without arguments.
+
+To establish a two-way SSL connection with the identity service :
+
+    $flame --username arezmerita --os-auth-token keystonetoken \
+           --project project-arezmerita --auth_url http://<Keystone_host>:5000/v2.0
+           --os-cert <path/to/certificate>  --os-key <path/to/key>
 
 Flame can be used with either a login and password pair or a keystone
 token by exporting the OS_AUTH_TOKEN variable (the token is obtained
