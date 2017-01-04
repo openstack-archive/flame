@@ -33,11 +33,14 @@ class KeystoneManager(object):
     _client = None
 
     def __init__(self, username, password, project, auth_url, insecure,
-                 endpoint_type='publicURL', region_name=None, auth_token=None):
+                 endpoint_type='publicURL', cert=None, key=None,
+                 region_name=None, auth_token=None):
         self.username = username
         self.password = password
         self.project = project
         self.auth_url = auth_url
+        self.cert = cert
+        self.key = key
         self.insecure = insecure
         self.region_name = region_name
         self.endpoint_type = endpoint_type
@@ -54,6 +57,8 @@ class KeystoneManager(object):
                 password=self.password,
                 tenant_name=self.project,
                 auth_url=self.auth_url,
+                cert=self.cert,
+                key=self.key,
                 region_name=self.region_name,
                 insecure=self.insecure,
                 endpoint_type=self.endpoint_type,
