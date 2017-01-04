@@ -67,6 +67,14 @@ def main(args=None):
                         default=os.environ.get("OS_ENDPOINT_TYPE",
                                                "publicURL"),
                         help="Defaults to env[OS_ENDPOINT_TYPE] or publicURL")
+    parser.add_argument("--os_cert", type=str,
+                        default=os.environ.get("OS_CERT"),
+                        help="User Certificate. "
+                             "Defaults to env[OS_CERT].")
+    parser.add_argument("--os_key", type=str,
+                        default=os.environ.get("OS_KEY"),
+                        help="User Key. "
+                             "Defaults to env[OS_KEY].")
     parser.add_argument('--exclude-servers', action='store_true',
                         default=False,
                         help="Do not export in template server resources")
@@ -88,6 +96,7 @@ def main(args=None):
     flame = client.Client(args.username, args.password,
                           args.project, args.auth_url,
                           args.os_auth_token,
+                          cert=args.os_cert, key=args.os_key,
                           region_name=args.region,
                           endpoint_type=args.endpoint_type,
                           insecure=args.insecure)
