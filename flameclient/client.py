@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This software is released under the MIT License.
 #
 # Copyright (c) 2014 Cloudwatt
