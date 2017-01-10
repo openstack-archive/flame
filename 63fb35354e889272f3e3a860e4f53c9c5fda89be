@@ -1,0 +1,8 @@
+Code-Review+2: Guillaume Espanel <guillaume.espanel@objectif-libre.com>
+Workflow+1: Guillaume Espanel <guillaume.espanel@objectif-libre.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 10 Jan 2017 16:03:57 +0000
+Reviewed-on: https://review.openstack.org/416560
+Project: openstack/flame
+Branch: refs/heads/master
