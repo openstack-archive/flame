@@ -96,7 +96,10 @@ class KeystoneManager(object):
             return catalog[service_type][0][endpoint_type]
 
     def get_project_id(self):
-        return self.client().project_id
+        if self.session:
+            return self.session.get_project_id()
+        else:
+            return self.client().project_id
 
 
 class NeutronManager(object):
