@@ -1,0 +1,9 @@
+Code-Review+1: Nikolay Mahotkin <nikolay.makhotkin@gmail.com>
+Code-Review+2: Ala Rezmerita <ala.rezmerita@orange.com>
+Workflow+1: Ala Rezmerita <ala.rezmerita@orange.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Fri, 13 Jan 2017 11:03:07 +0000
+Reviewed-on: https://review.openstack.org/417905
+Project: openstack/flame
+Branch: refs/heads/master
