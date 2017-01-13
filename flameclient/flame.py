@@ -652,7 +652,7 @@ class TemplateGenerator(object):
             else:
                 if not self.exclude_servers and ip['port_id']:
                     device = self.ports[ip['port_id']][1]['device_id']
-                    if device and self.servers[device]:
+                    if device and self.servers.get(device):
                         server = self.servers[device]
                         server_resource_name = "server_%d" % server[0]
                         properties = {
