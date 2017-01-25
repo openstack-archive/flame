@@ -1629,7 +1629,6 @@ class ServerTests(BaseTestCase):
                     'key_name': {'get_resource': 'key_0'},
                     'flavor': {'get_param': 'server_0_flavor'},
                     'image': {'get_param': 'server_0_image'},
-                    'key_name': {'get_resource': 'key_0'}
                 }
             }
         }
