@@ -1,5 +1,5 @@
 Flame: Automatic Heat template generation
-============================================
+=========================================
 
 OpenStack Orchestration project Heat implements an orchestration engine to
 launch multiple composite cloud applications based on templates. A Heat
@@ -30,7 +30,7 @@ Then just run:
         python setup.py install
 
 Usage
-----------------------
+-----
 
     usage: flame [-h] [--username USERNAME] [--password PASSWORD]
                  [--project PROJECT] [--region REGION] [--auth_url AUTH_URL]
@@ -38,7 +38,7 @@ Usage
                  [--os-cert <certification>] [--os-key <key>]
                  [--endpoint_type ENDPOINT_TYPE] [--exclude-servers]
                  [--exclude-volumes] [--exclude-keypairs] [--generate-stack-data]
-                 [--extract-ports]
+                 [--extract-ports] [--exclude-secgroup]
 
     Heat template and data file generator
 
@@ -71,6 +71,7 @@ Usage
                             In addition to template, generate Heat stack data
                             file.
       --extract-ports       Export the tenant network ports
+      --exclude-secgroups   Do not export in template security group resources
 
 Usage example
 -------------
