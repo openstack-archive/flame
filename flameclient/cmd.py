@@ -33,26 +33,46 @@ from flameclient import client
 def main(args=None):
     desc = "Heat template and data file generator"
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument("--username", type=str,
+    parser.add_argument("--os-username", type=str,
                         default=os.environ.get("OS_USERNAME"),
                         help="A user name with access to the project. "
                              "Defaults to env[OS_USERNAME]")
-    parser.add_argument("--password", type=str,
+    parser.add_argument("--username", type=str,
+                        dest='os_username',
+                        default=os.environ.get("OS_USERNAME"),
+                        help="Deprecated ! Use --os-username")
+    parser.add_argument("--os-password", type=str,
                         default=os.environ.get("OS_PASSWORD"),
                         help="The user's password. "
                              "Defaults to env[OS_PASSWORD]")
-    parser.add_argument("--project", type=str,
+    parser.add_argument("--password", type=str,
+                        dest='os_password',
+                        default=os.environ.get("OS_PASSWORD"),
+                        help="Deprecated ! Use --os-password")
+    parser.add_argument("--os-project-name", type=str,
                         default=os.environ.get("OS_TENANT_NAME"),
                         help="Name of project. "
                              "Defaults to env[OS_TENANT_NAME]")
-    parser.add_argument("--region",
+    parser.add_argument("--project", type=str,
+                        dest='os_project_name',
+                        default=os.environ.get("OS_TENANT_NAME"),
+                        help="Deprecated! Use --os-project-name")
+    parser.add_argument("--os-region-name",
                         default=os.environ.get("OS_REGION_NAME"),
                         help="Name of region. "
                              "Defaults to env[OS_REGION_NAME]")
-    parser.add_argument("--auth_url", type=str,
+    parser.add_argument("--region",
+                        dest='os_region_name',
+                        default=os.environ.get("OS_REGION_NAME"),
+                        help="Deprecated ! Use --os-region-name")
+    parser.add_argument("--os-auth-url", type=str,
                         default=os.environ.get("OS_AUTH_URL"),
                         help="Authentication URL. "
                              "Defaults to env[OS_AUTH_URL].")
+    parser.add_argument("--auth_url", type=str,
+                        dest='os_auth_url',
+                        default=os.environ.get("OS_AUTH_URL"),
+                        help="Deprecated ! Use --os-auth-url.")
     parser.add_argument("--os-auth-token", type=str,
                         default=os.environ.get("OS_AUTH_TOKEN"),
                         help="User's auth token. "
@@ -63,10 +83,15 @@ def main(args=None):
                              "server's certificate will not be verified "
                              "against any certificate authorities. This "
                              "option should be used with caution.")
-    parser.add_argument("--endpoint_type", type=str,
+    parser.add_argument("--os-endpoint-type", type=str,
                         default=os.environ.get("OS_ENDPOINT_TYPE",
                                                "publicURL"),
                         help="Defaults to env[OS_ENDPOINT_TYPE] or publicURL")
+    parser.add_argument("--endpoint_type", type=str,
+                        dest='os_endpoint_type',
+                        default=os.environ.get("OS_ENDPOINT_TYPE",
+                                               "publicURL"),
+                        help="Deprecated ! Use --os-endpoint-type")
     parser.add_argument("--os-cert", type=str, metavar='<certificate>',
                         default=os.environ.get("OS_CERT"),
                         help="User's certificate. "
@@ -97,12 +122,12 @@ def main(args=None):
                              "security group resources")
 
     args = parser.parse_args()
-    flame = client.Client(args.username, args.password,
-                          args.project, args.auth_url,
+    flame = client.Client(args.os_username, args.os_password,
+                          args.os_project_name, args.os_auth_url,
                           args.os_auth_token,
                           cert=args.os_cert, key=args.os_key,
-                          region_name=args.region,
-                          endpoint_type=args.endpoint_type,
+                          region_name=args.os_region_name,
+                          endpoint_type=args.os_endpoint_type,
                           insecure=args.insecure)
     template = flame.template_generator
     template.extract_vm_details(args.exclude_servers,
