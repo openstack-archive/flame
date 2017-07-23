@@ -1,7 +1,7 @@
 [run]
 branch = True
 source = flameclient
-omit = flameclient/tests/*,flameclient/openstack/*
+omit = flameclient/tests/*
 
 [report]
 ignore_errors = True
