@@ -22,12 +22,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
+from flameclient import resources as base_resources
+from flameclient.utils import data_list_to_dict
+from flameclient.utils import memoized_property
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+
+class FlavorsManager(base_resources.ResourceManager):
+    """Used only to provide api resources. Heat does not create flavors."""
+
+    @staticmethod
+    def add_resource_flavor(resource):
+        data = resource.data
+        manager = resource.manager
+        flavor_parameter_name = "%s_flavor" % resource.name
+        description = "Flavor to use for %s %s" % (
+            manager.singular_name, resource.name
+        )
+        default = data.flavor['id']
+        resource.add_parameter(
+            flavor_parameter_name, description, default=default
+        )
+        resource.properties['flavor'] = {'get_param': flavor_parameter_name}
+
+    @memoized_property
+    def api_resources(self):
+        return data_list_to_dict(
+            self.generator_memoize(self.conn.compute.flavors)
+        )
+
+    def get_hot_resources(self):
+        return []

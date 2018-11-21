@@ -22,12 +22,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
+import six
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+import openstack
+
+from flameclient.tests import mock
+from flameclient.utils import get_deep_attr
+from flameclient.utils import munchify
+
+
+def get_mocked_openstackcloud():
+    from flameclient.tests.fixtures import openstackcloud
+
+    cloud = mock.Mock(spec_set=openstack.connection.Connection)
+    # for each self.conn.`fixture_module.NAME`() call we will return
+    # fixture_module.FIXTURES
+    for fixture_module in six.itervalues(openstackcloud.FIXTURES):
+        get_deep_attr(
+            cloud, fixture_module.NAME
+        ).return_value = munchify(fixture_module.FIXTURES)
+    return cloud
