@@ -22,12 +22,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+NAME = 'network.routers'
+
+FIXTURES = [{'admin_state_up': True,
+  'availability_zone_hints': None,
+  'availability_zones': None,
+  'created_at': None,
+  'description': None,
+  'distributed': None,
+  'external_gateway_info': {'enable_snat': True,
+                            'network_id': '6ea98324-0f14-49f6-97c0-885d1b8dc517'},
+  'flavor_id': None,
+  'ha': None,
+  'id': 'ebc6dd0c-a276-4368-8084-bd37c587cc24',
+  'name': 'tellurium_router',
+  'revision': None,
+  'routes': None,
+  'status': 'ACTIVE',
+  'tags': [],
+  'tenant_id': '9824a7403a1b411d8d207d26218597ce',
+  'updated_at': None}]

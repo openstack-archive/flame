@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+CURDIR=$(pwd)
+SELFDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+cd $SELFDIR
+python -m flake8 flameclient
+if [[ $1 = '-v' ]]; then
+    python -m pylint --rcfile=pylintrc --reports=yes flameclient
+else
+    python -m pylint --rcfile=pylintrc flameclient
+fi
+cd $CURDIR

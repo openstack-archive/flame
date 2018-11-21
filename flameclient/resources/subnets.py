@@ -22,12 +22,42 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
+import six
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+from flameclient import resources as base_resources
+from flameclient.utils import data_list_to_dict
+from flameclient.utils import memoized_property
+
+
+class Subnet(base_resources.AdvancedResource):
+    type = 'OS::Neutron::Subnet'
+    property_keys = (
+        'name',
+        'allocation_pools',
+        'cidr',
+        'dns_nameservers',
+        'enable_dhcp',
+        'host_routes',
+        'ip_version',
+    )
+
+    def __init__(self, manager, name, data, properties=None):
+        super(Subnet, self).__init__(manager, name, data, properties)
+        net_name = self.managers.networks.get_resource_name(self['network_id'])
+        self.properties['network_id'] = {'get_resource': net_name}
+
+
+class SubnetsManager(base_resources.ResourceManager):
+
+    @memoized_property
+    def api_resources(self):
+        return data_list_to_dict(
+            self.generator_memoize(self.conn.network.subnets)
+        )
+
+    def get_resources(self):
+        return [
+            Subnet(self, self.get_resource_name(subnet.id), subnet)
+            for subnet in six.itervalues(self.api.subnets)
+            if subnet['network_id'] in self.managers.networks.internal_networks
+        ]

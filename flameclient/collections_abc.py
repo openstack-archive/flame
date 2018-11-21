@@ -23,11 +23,10 @@
 # SOFTWARE.
 
 try:
-    from unittest import mock   # Python 3.3+
+    # This is not handled by six.moves yet:
+    # https://github.com/benjaminp/six/issues/155
+    from collections.abc import *  # noqa pylint: disable=W0401,W0614
+    from collections.abc import __all__  # noqa
 except ImportError:
-    import mock  # noqa: Python 2.7
-
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+    from _abcoll import *  # noqa pylint: disable=W0401,W0614
+    from _abcoll import __all__  # noqa
