@@ -22,12 +22,40 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
+import six
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+from flameclient import resources as base_resources
+from flameclient.utils import data_list_to_dict
+from flameclient.utils import memoized_property
+
+
+class ServerGroup(base_resources.AdvancedHotResource):
+    type = 'OS::Nova::ServerGroup'
+    property_keys = ('name', 'policies')
+
+
+class ServerGroupsManager(base_resources.ResourceManager):
+
+    def add_resource_server_groups(self, resource):
+        server = resource.data
+        for servergroup in self.api_resources.values():
+            if server.id in servergroup.members:
+                hint = {
+                    'group': {
+                        'get_resource':
+                        self.get_resource_name(servergroup.id)
+                    }
+                }
+                resource.properties['scheduler_hints'] = hint
+
+    @memoized_property
+    def api_resources(self):
+        return data_list_to_dict(
+            self.generator_memoize(self.conn.compute.server_groups)
+        )
+
+    def get_hot_resources(self):
+        return [
+            ServerGroup(self, self.get_resource_name(sg.id), sg)
+            for sg in six.itervalues(self.api_resources)
+        ]

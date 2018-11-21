@@ -1,0 +1,225 @@
+description: Generated template
+heat_template_version: 2013-05-23
+parameters:
+  external_network_for_floating_ip_0:
+    default: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+    description: Network to allocate floating IP from
+    type: string
+  router_0_external_network:
+    default: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+    description: Router external network
+    type: string
+  server_0_flavor:
+    default: '17'
+    description: Flavor to use for server server_0
+    type: string
+  server_1_flavor:
+    default: '42'
+    description: Flavor to use for server server_1
+    type: string
+  server_1_image:
+    default: 8254d703-e46f-4101-88ff-6f40bf7df51a
+    description: Image to use for server server_1
+    type: string
+  server_2_flavor:
+    default: '42'
+    description: Flavor to use for server server_2
+    type: string
+  server_2_image:
+    default: 8254d703-e46f-4101-88ff-6f40bf7df51a
+    description: Image to use for server server_2
+    type: string
+  server_3_flavor:
+    default: '16'
+    description: Flavor to use for server server_3
+    type: string
+  server_3_image:
+    default: dd7d4b21-79b8-42f0-8464-0d1a5274c638
+    description: Image to use for server server_3
+    type: string
+  volume_0_image:
+    default: 70a9c910-dd99-4065-bce9-11e89bc479fe
+    description: Image to create volume volume_0 from
+    type: string
+  volume_0_volume_type:
+    default: standard
+    description: Volume type for volume volume_0
+    type: string
+  volume_1_volume_type:
+    default: standard
+    description: Volume type for volume volume_1
+    type: string
+resources:
+  floating_ip_0:
+    properties:
+      floating_network_id:
+        get_param: external_network_for_floating_ip_0
+    type: OS::Neutron::FloatingIP
+  keypair_0:
+    properties:
+      name: tellurium-key
+      public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCwp5kVZ+3baPZllNXZDG2mivd5nJ5wWY6Jj/WV6NlO6cUiaH5om6itU3lyJxtAbLgbbvY2FjMg1PI2JI3EHx0OSPEbDdeNsQGi31qyuiB1S5p6TreI0Dfy0tywJ9G2CURjkuJnC8SvnMfVYLMFBvx7p8RzxSdDm/zrmc4KY3ktdfYQDNtEiH2jucUUiY0ipVkDNhhv03+5C9cnpaIcVDBkddE/KEME8NIIh7s6aYCXJEWJx85nOVVRD5qK7ouV6FcGVn6zqWRD3jn0iSxcFwiKx7p6M77PmJAY4gBIpWQmutok6T4ZrXxa7jE4dybwo5e8dyvGyc7WWGqXcmcinUWr
+        Generated-by-Nova
+    type: OS::Nova::KeyPair
+  keypair_1:
+    properties:
+      name: tellurium-key-phrase
+      public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCaYaTC6KCC2GURFMpRQiRq8Og10PcBbVnrQqluzi2E5vAqTHAegzivmGB8h2xrjXUfbKV2bE8kz2ZE66sq1yLO/jZ+rkOA+zLnOxNwkk3gQq57b26ZegPL2tTgottJTPGyPz6v2+LLtDf/+xTJMjkPKcMWylu12Js0XKVkdY35fwN7fRvA4xghtGu1GcmS2XFDMmeLDrG1KNPbBLj5cGoD723Ho7ZhAjLThoY/xMN2OYsSNzrg3S00QngZMzQvJf0ETrB3GtITk5FUs54qMRfiyUC72lw0gLTIJK8rs7fX/yeO+467afRt2xwHN50rEWJPeTVYWdlH/msh7NQ3LZ8/
+        root@9b638ff21113
+    type: OS::Nova::KeyPair
+  network_1:
+    properties:
+      admin_state_up: true
+      name: tellurium_net
+      shared: false
+    type: OS::Neutron::Net
+  router_0:
+    properties:
+      admin_state_up: true
+      name: tellurium_router
+    type: OS::Neutron::Router
+  router_0_gateway:
+    properties:
+      network_id:
+        get_param: router_0_external_network
+      router_id:
+        get_resource: router_0
+    type: OS::Neutron::RouterGateway
+  router_0_interface_3:
+    properties:
+      router_id:
+        get_resource: router_0
+      subnet_id:
+        get_resource: subnet_0
+    type: OS::Neutron::RouterInterface
+  security_group_0:
+    properties:
+      name: _default
+      rules:
+      - direction: ingress
+        ethertype: IPv4
+        remote_mode: remote_group_id
+      - direction: ingress
+        ethertype: IPv6
+        remote_mode: remote_group_id
+      - direction: egress
+        ethertype: IPv4
+        remote_ip_prefix: 0.0.0.0/0
+      - direction: egress
+        ethertype: IPv6
+        remote_ip_prefix: ::/0
+    type: OS::Neutron::SecurityGroup
+  security_group_1:
+    properties:
+      description: ''
+      name: http
+      rules:
+      - direction: egress
+        ethertype: IPv4
+        remote_ip_prefix: 0.0.0.0/0
+      - direction: egress
+        ethertype: IPv6
+      - direction: ingress
+        ethertype: IPv4
+        port_range_max: 80
+        port_range_min: 80
+        protocol: tcp
+        remote_ip_prefix: 0.0.0.0/0
+    type: OS::Neutron::SecurityGroup
+  server_0:
+    properties:
+      block_device_mapping_v2:
+      - device_name: /dev/vda
+        volume_id:
+          get_resource: volume_0
+      flavor:
+        get_param: server_0_flavor
+      key_name:
+        get_resource: keypair_0
+      name: Ubuntu 14.04
+      networks:
+      - network:
+          get_resource: network_1
+      security_groups:
+      - get_resource: security_group_1
+      - get_resource: security_group_0
+    type: OS::Nova::Server
+  server_1:
+    properties:
+      flavor:
+        get_param: server_1_flavor
+      image:
+        get_param: server_1_image
+      key_name:
+        get_resource: keypair_0
+      name: tellurium_win_instance
+      networks:
+      - network:
+          get_resource: network_1
+      security_groups:
+      - get_resource: security_group_0
+    type: OS::Nova::Server
+  server_2:
+    properties:
+      flavor:
+        get_param: server_2_flavor
+      image:
+        get_param: server_2_image
+      key_name:
+        get_resource: keypair_1
+      name: tellurium_win_instance_ssh_pass
+      networks:
+      - network:
+          get_resource: network_1
+      security_groups:
+      - get_resource: security_group_0
+    type: OS::Nova::Server
+  server_3:
+    properties:
+      flavor:
+        get_param: server_3_flavor
+      image:
+        get_param: server_3_image
+      key_name:
+        get_resource: keypair_0
+      name: tellurium_instance
+      networks:
+      - network:
+          get_resource: network_1
+      security_groups:
+      - get_resource: security_group_0
+    type: OS::Nova::Server
+  subnet_0:
+    properties:
+      allocation_pools:
+      - end: 192.168.0.254
+        start: 192.168.0.2
+      cidr: 192.168.0.0/24
+      dns_nameservers:
+      - 8.8.8.8
+      enable_dhcp: true
+      host_routes: []
+      ip_version: 4
+      name: tellurium_net_subnet
+      network_id:
+        get_resource: network_1
+    type: OS::Neutron::Subnet
+  volume_0:
+    properties:
+      image:
+        get_param: volume_0_image
+      metadata:
+        attached_mode: rw
+        readonly: 'False'
+      name: Ubuntu 14.04
+      size: 20
+      volume_type:
+        get_param: volume_0_volume_type
+    type: OS::Cinder::Volume
+  volume_1:
+    properties:
+      name: tellurium_volume
+      size: 5
+      volume_type:
+        get_param: volume_1_volume_type
+    type: OS::Cinder::Volume

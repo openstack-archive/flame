@@ -22,12 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
+from flameclient.utils import load_resource_modules
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+
+FIXTURES = load_resource_modules(__file__)

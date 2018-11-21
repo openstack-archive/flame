@@ -22,12 +22,28 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+NAME = 'network.subnets'
+
+FIXTURES = [{'allocation_pools': [{'end': '192.168.0.254', 'start': '192.168.0.2'}],
+  'cidr': '192.168.0.0/24',
+  'created_at': None,
+  'description': None,
+  'dns_nameservers': ['8.8.8.8'],
+  'enable_dhcp': True,
+  'gateway_ip': '192.168.0.1',
+  'host_routes': [],
+  'id': '541f0782-587f-428b-bd79-ca227a66973b',
+  'ip_version': 4,
+  'ipv6_address_mode': None,
+  'ipv6_ra_mode': None,
+  'name': 'tellurium_net_subnet',
+  'network_id': 'f054013d-7052-4708-9c72-2948a329fac3',
+  'revision_number': None,
+  'segment_id': None,
+  'service_types': None,
+  'subnetpool_id': None,
+  'tags': [],
+  'tenant_id': '9824a7403a1b411d8d207d26218597ce',
+  'updated_at': None,
+  'use_default_subnetpool': None}]
