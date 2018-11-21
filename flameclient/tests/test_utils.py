@@ -22,12 +22,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-try:
-    from unittest import mock   # Python 3.3+
-except ImportError:
-    import mock  # noqa: Python 2.7
+from flameclient.tests import unittest
+from flameclient import utils
 
-try:
-    import unittest2 as unittest   # Python 2.7
-except ImportError:
-    import unittest  # noqa
+
+class TestUtils(unittest.TestCase):
+    def test_camel_to_snake(self):
+        for inp, outp in (
+            ('camelcase', 'camelcase'),
+            ('Camelcase', 'camelcase'),
+            ('camelCase', 'camel_case'),
+            ('CamelCase', 'camel_case'),
+            ('camelCCase', 'camel_c_case'),
+            ('CCamelCase', 'c_camel_case'),
+            ('CCCCamelCase', 'ccc_camel_case'),
+            ('CCCcamelCase', 'cc_ccamel_case'),
+            ('Camel123case', 'camel_123case'),
+            ('Camel123Case', 'camel_123_case'),
+        ):
+            self.assertEqual(utils.camel_to_snake(inp), outp)
+
+    def test_format_option(self):
+        for option, formated in (
+            ('--foo-bar', 'foo_bar'),
+            ('--this-is-a-long-option', 'this_is_a_long_option')
+        ):
+            self.assertEqual(
+                formated, utils.format_option(option)
+            )
+
+    def test_format_option_kwargs(self):
+        self.assertEqual(
+            {'foo_bar': 'value'}, utils.format_option_kwargs(
+                {'--foo-bar': 'value'}
+            )
+        )

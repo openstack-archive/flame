@@ -14,5 +14,3 @@ free IP addresses of a pool, for example, with a pool starting at 10.0.0.2 :
 When this stack is imported in Heat, the DHCP server IP is set to the lowest
 free IP address of its pool. Depending on the VM creation order, the DHCP
 address can either collide with vm1's or vm2's IP.
-
-
