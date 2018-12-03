@@ -1,0 +1,9 @@
+Code-Review+2: Guillaume Espanel <guillaume.espanel@objectif-libre.com>
+Code-Review+2: Ala Rezmerita <ala.rezmerita@orange.com>
+Workflow+1: Ala Rezmerita <ala.rezmerita@orange.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Mon, 03 Dec 2018 09:04:40 +0000
+Reviewed-on: https://review.openstack.org/619267
+Project: openstack/flame
+Branch: refs/heads/master
