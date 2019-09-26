@@ -1,4 +1,0 @@
-bpython==0.17.1
-ipython==5.8.0
-ipdb==0.11
-q==2.6
